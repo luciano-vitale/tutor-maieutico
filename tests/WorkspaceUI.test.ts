@@ -256,5 +256,37 @@ describe('WorkspaceUI', () => {
     expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
     expect(tutorTurnElBefore.textContent).toContain("Qual è l'ultimo indice valido?");
   });
+
+  test('mostra il titolo "StudIA Tutor maieutico" e consente di aprire e chiudere la topbar "Disclosure AUP-IA" tramite l\'icona stile LM Studio posizionata di fianco a quella della sidebar', async () => {
+    const root = document.getElementById('app')!;
+    const engine = new MaieuticSessionEngine(
+      new FakeInferencePort(),
+      new FakeEnvironmentPort()
+    );
+
+    await mountWorkspaceUI(root, engine);
+
+    const titleEl = root.querySelector<HTMLElement>('.tm-title')!;
+    expect(titleEl.textContent).toBe('StudIA Tutor maieutico');
+
+    const sidebarBtn = root.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle-btn"]')!;
+    const topbarBtn = root.querySelector<HTMLButtonElement>('[data-testid="topbar-toggle-btn"]')!;
+    const disclosureBanner = root.querySelector<HTMLElement>('[data-testid="aup-disclosure-banner"]')!;
+
+    expect(topbarBtn).not.toBeNull();
+    expect(topbarBtn.querySelector('svg')).not.toBeNull();
+    expect(sidebarBtn.nextElementSibling).toBe(topbarBtn);
+    expect(topbarBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(disclosureBanner.hidden).toBe(false);
+
+    topbarBtn.click();
+    expect(topbarBtn.getAttribute('aria-expanded')).toBe('false');
+    expect(disclosureBanner.hidden).toBe(true);
+
+    topbarBtn.click();
+    expect(topbarBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(disclosureBanner.hidden).toBe(false);
+  });
 });
+
 

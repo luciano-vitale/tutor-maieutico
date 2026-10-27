@@ -3,6 +3,7 @@ import type { MaieuticSessionEngine, MaieuticSessionSnapshot } from '../domain/M
 const ICONS = {
   brandSparkles: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>`,
   sidebarLeft: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>`,
+  topbarPanel: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg>`,
   sunLight: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`,
   moonDark: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
   shieldInfo: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`,
@@ -49,12 +50,14 @@ export async function mountWorkspaceUI(
 ): Promise<void> {
   let currentTheme: 'dark' | 'light' = 'dark';
   let isSidebarOpen = true;
+  let isTopbarOpen = true;
   document.documentElement.dataset.theme = currentTheme;
 
   container.innerHTML = `
     <div class="tm-shell">
       <header class="tm-header" role="banner">
         <div
+          id="aup-disclosure-topbar"
           class="tm-disclosure-banner"
           data-testid="aup-disclosure-banner"
           role="region"
@@ -85,9 +88,20 @@ export async function mountWorkspaceUI(
             >
               ${ICONS.sidebarLeft}
             </button>
+            <button
+              type="button"
+              class="tm-icon-btn tm-topbar-toggle-btn"
+              data-testid="topbar-toggle-btn"
+              data-tooltip="Mostra o nascondi la barra superiore di disclosure AUP-IA"
+              aria-label="Mostra o nascondi la barra superiore di disclosure AUP-IA"
+              aria-controls="aup-disclosure-topbar"
+              aria-expanded="true"
+            >
+              ${ICONS.topbarPanel}
+            </button>
             <span class="tm-brand-logo">${ICONS.brandSparkles}</span>
             <div class="tm-brand-titles">
-              <h1 class="tm-title">Tutor Maieutico</h1>
+              <h1 class="tm-title">StudIA Tutor maieutico</h1>
               <span class="tm-subtitle">I.I.S.S. "Marconi-Hack" • Laboratorio zero-data</span>
             </div>
           </div>
@@ -293,6 +307,12 @@ export async function mountWorkspaceUI(
   const sidebarToggleBtn = container.querySelector<HTMLButtonElement>(
     '[data-testid="sidebar-toggle-btn"]'
   )!;
+  const topbarToggleBtn = container.querySelector<HTMLButtonElement>(
+    '[data-testid="topbar-toggle-btn"]'
+  )!;
+  const disclosureBanner = container.querySelector<HTMLElement>(
+    '[data-testid="aup-disclosure-banner"]'
+  )!;
   const leftSidebar = container.querySelector<HTMLElement>('[data-testid="left-panel-context"]')!;
   const themeToggleBtn = container.querySelector<HTMLButtonElement>(
     '[data-testid="theme-toggle-btn"]'
@@ -330,6 +350,16 @@ export async function mountWorkspaceUI(
 
   sidebarToggleBtn.addEventListener('click', () => {
     setSidebarOpen(!isSidebarOpen);
+  });
+
+  function setTopbarOpen(open: boolean): void {
+    isTopbarOpen = open;
+    topbarToggleBtn.setAttribute('aria-expanded', String(open));
+    disclosureBanner.hidden = !open;
+  }
+
+  topbarToggleBtn.addEventListener('click', () => {
+    setTopbarOpen(!isTopbarOpen);
   });
 
   themeToggleBtn.addEventListener('click', () => {

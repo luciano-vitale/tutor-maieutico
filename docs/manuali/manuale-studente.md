@@ -1,4 +1,4 @@
-# Manuale operativo per lo studente — Tutor Maieutico
+# Manuale operativo per lo studente — StudIA Tutor maieutico
 
 **Guida pratica all'utilizzo socratico in laboratorio e a casa secondo l'AUP-IA e il regime zero-data.**  
 *I.I.S.S. "Marconi-Hack" — Bari (indirizzi ITT Informatica e Liceo Scientifico opzione Scienze Applicate)*
@@ -15,13 +15,13 @@
 6. [Personalizzare lo studio: lo scaffolding cognitivo (biennio/triennio e alta leggibilità)](#6-personalizzare-lo-studio-lo-scaffolding-cognitivo-bienniotriennio-e-alta-leggibilità)
 7. [E se l'IA è spenta? Usare la modalità Rubber Duck](#7-e-se-lia-è-spenta-usare-la-modalità-rubber-duck)
 8. [Fine dell'esercitazione: dichiarazione d'uso IA e "Nuova sessione"](#8-fine-dellesercitazione-dichiarazione-duso-ia-e-nuova-sessione)
-9. [Appendice — Come installare e usare Tutor Maieutico gratuitamente sul tuo PC di casa](#9-appendice--come-installare-e-usare-tutor-maieutico-gratuitamente-sul-tuo-pc-di-casa)
+9. [Appendice — Come installare e usare StudIA Tutor maieutico gratuitamente sul tuo PC di casa](#9-appendice--come-installare-e-usare-studia-tutor-maieutico-gratuitamente-sul-tuo-pc-di-casa)
 
 ---
 
 ## 1. Cosa fa (e cosa non fa) il tutor maieutico: il patto educativo
 
-Quando apri **Tutor Maieutico** nel browser del laboratorio, in alto vedrai sempre la barra di **disclosure AUP-IA** (`CU-05`, `CU-11`, `CU-15`). Prima di iniziare, ricorda quattro regole fondamentali:
+Quando apri **StudIA Tutor maieutico** nel browser del laboratorio, in alto vedrai sempre la barra di **disclosure AUP-IA** (`CU-05`, `CU-11`, `CU-15`). Prima di iniziare, ricorda quattro regole fondamentali:
 
 1. **Non ti scrive mai la soluzione pronta (invariante di non-sostituzione, AUP-IA §1 e art. 25 L. 132/2025)**:
    Se chiedi *"Scrivimi il programma in C++ che ordina il vettore"*, il **tutor maieutico** non ti darà il codice da copiare (e se il modello linguistico provasse a generare più di 3 righe di codice o una funzione intera, il **guardrail anti-soluzione** lo oscurerà automaticamente). Il suo compito è farti **domande guida** per farti scoprire da solo dove si trova l'errore o come costruire l'algoritmo.
@@ -133,7 +133,7 @@ Quando il docente annuncia la conclusione del laboratorio:
 
 ---
 
-## 9. Appendice — Come installare e usare Tutor Maieutico gratuitamente sul tuo PC di casa
+## 9. Appendice — Come installare e usare StudIA Tutor maieutico gratuitamente sul tuo PC di casa
 
 Vuoi allenarti a casa con lo stesso metodo maieutico usato in laboratorio, gratis, senza abbonamenti cloud e anche senza connessione a Internet? Puoi farlo in **modalità Standalone Loopback** sul tuo computer (Windows, macOS o Linux):
 
@@ -147,8 +147,8 @@ Vuoi allenarti a casa con lo stesso metodo maieutico usato in laboratorio, grati
    - Nel pannello a sinistra (**Local Server**), verifica che la porta sia `1234` e **attiva la spunta `Enable CORS`**;
    - Clicca su **Start Server (Running)**.
 
-### Passo 2 — Avvia Tutor Maieutico
-1. Scarica o clona la cartella del progetto **Tutor Maieutico** (o la cartella compilata `dist/` fornita dal docente).
+### Passo 2 — Avvia StudIA Tutor maieutico
+1. Scarica o clona la cartella del progetto **StudIA Tutor maieutico** (o la cartella compilata `dist/` fornita dal docente).
 2. Se hai la cartella `dist/` pronta e Python installato sul PC, apri il Terminale (o Prompt dei comandi) dentro la cartella ed esegui:
    ```bash
    python3 -m http.server 8080 --bind 127.0.0.1 --directory dist

@@ -1,4 +1,4 @@
-# Tutor Maieutico
+# StudIA Tutor maieutico
 
 Applicazione didattica locale (regime zero-data) di supporto socratico allo studio dell'informatica e della programmazione per i laboratori dell'I.I.S.S. "Marconi-Hack", conforme a AUP-IA, PUIA (casi d'uso `CU-09`, `CU-11`, `CU-12`, esclusione `CU-16..19`) e art. 25 L. 132/2025.
 

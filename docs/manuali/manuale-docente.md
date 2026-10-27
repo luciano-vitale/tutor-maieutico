@@ -1,4 +1,4 @@
-# Manuale per il docente e l'assistente tecnico — Tutor Maieutico
+# Manuale per il docente e l'assistente tecnico — StudIA Tutor maieutico
 
 **Guida all'installazione di laboratorio (Standalone Loopback & LAN), alla configurazione didattica e alla conduzione delle esercitazioni secondo AUP-IA, PUIA e art. 25 L. 132/2025.**  
 *I.I.S.S. "Marconi-Hack" — Bari (indirizzi ITT Informatica e Liceo Scientifico opzione Scienze Applicate)*
@@ -26,7 +26,7 @@
 
 ## 1. Architettura operativa e regime zero-data
 
-**Tutor Maieutico** è progettato per operare in totale isolamento dalla rete Internet esterna ([ADR-0001](../adr/0001-stateless-inference-loopback-and-lan.md), [ADR-0004](../adr/0004-offline-static-bundle-and-rubber-duck-fallback.md)):
+**StudIA Tutor maieutico** è progettato per operare in totale isolamento dalla rete Internet esterna ([ADR-0001](../adr/0001-stateless-inference-loopback-and-lan.md), [ADR-0004](../adr/0004-offline-static-bundle-and-rubber-duck-fallback.md)):
 
 1. **Client 100% statico e volatile**: l'interfaccia web gira interamente nel browser della singola postazione di laboratorio. Tutti i dati della **sessione maieutica** (tentativi di codice, errori del compilatore, **pre-impegno cognitivo** e cronologia degli **interventi maieutici**) risiedono esclusivamente nella memoria volatile (**RAM**) della scheda del browser e non vengono mai scritti in `localStorage`, `sessionStorage`, `IndexedDB` o cookie (**regime zero-data**, PUIA §4).
 2. **Motore di inferenza stateless**: il client comunica via HTTP/SSE con **LM Studio** (o server compatibile OpenAI API) attraverso due sole topologie ammesse dal codice (`LmStudioHttpAdapter`):
@@ -55,7 +55,7 @@ Per preparare un laboratorio scollegato da Internet:
 ### Passo 1 — Su una postazione tecnica connessa (una tantum)
 1. Scaricare l'installer di **LM Studio** per il sistema operativo del laboratorio (Windows, macOS o Linux).
 2. Scaricare il file `.gguf` del modello scelto (es. `qwen2.5-coder-7b-instruct-q4_k_m.gguf`).
-3. Compilare il bundle statico di **Tutor Maieutico**:
+3. Compilare il bundle statico di **StudIA Tutor maieutico**:
    ```bash
    git clone <url-repo-istituto>/tutor-maieutico.git
    cd tutor-maieutico
@@ -86,7 +86,7 @@ Quando ogni postazione esegue localmente sia il browser sia LM Studio:
    - Attivare l'interruttore **Enable CORS** (indispensabile affinché il browser possa interrogare `http://127.0.0.1:1234/v1`);
    - Lasciare **disattivato** *Serve on Local Network* (così il server ascolta esclusivamente sull'interfaccia di loopback `127.0.0.1`).
 4. Portare lo switch dello stato server su **Running (Start Server)**.
-5. Aprendo **Tutor Maieutico** nel browser, il badge in alto mostrerà automaticamente lo stato online in **modalità Standalone Loopback**.
+5. Aprendo **StudIA Tutor maieutico** nel browser, il badge in alto mostrerà automaticamente lo stato online in **modalità Standalone Loopback**.
 
 ---
 
@@ -106,7 +106,7 @@ Quando le postazioni degli studenti hanno poca RAM e interrogano un unico server
    - [ ] A fine giornata di laboratorio, chiudere l'istanza server o svuotare i log volatili della console Developer.
 
 ### Sulle postazioni client degli studenti
-1. Aprire **Tutor Maieutico** nel browser della postazione.
+1. Aprire **StudIA Tutor maieutico** nel browser della postazione.
 2. Nella barra superiore, sostituire `http://127.0.0.1:1234/v1` con l'indirizzo LAN del server di laboratorio, ad esempio:
    ```text
    http://192.168.1.200:1234/v1
@@ -149,7 +149,7 @@ L'assistente tecnico può ospitare la cartella statica `dist/` su un web server 
 
 ## 7. Inquadramento normativo e ruolo del docente (AUP-IA, PUIA, L. 132/2025)
 
-L'impiego di **Tutor Maieutico** in laboratorio attua le disposizioni regolamentari dell'Istituto:
+L'impiego di **StudIA Tutor maieutico** in laboratorio attua le disposizioni regolamentari dell'Istituto:
 
 1. **Primato dell'apprendimento e approccio maieutico (AUP-IA §1)**: lo strumento non fornisce mai codice risolutivo pronto all'uso (**invariante di non-sostituzione**), ma stimola lo studente con domande socratiche a partire dal suo **pre-impegno cognitivo**.
 2. **Prevalenza del lavoro intellettuale umano (art. 25 Legge 23 settembre 2025, n. 132)**: l'elaborato di programmazione resta integralmente opera intellettuale dello studente, che progetta, scrive, compila e verifica il codice nel proprio IDE di laboratorio.

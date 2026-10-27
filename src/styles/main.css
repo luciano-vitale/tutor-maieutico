@@ -315,7 +315,8 @@ body {
   background: var(--tm-surface-alt);
 }
 
-.tm-sidebar-toggle-btn[aria-expanded="true"] {
+.tm-sidebar-toggle-btn[aria-expanded="true"],
+.tm-topbar-toggle-btn[aria-expanded="true"] {
   color: var(--tm-accent-end);
   border-color: rgba(56, 189, 248, 0.42);
   background: var(--tm-accent-badge-bg);
