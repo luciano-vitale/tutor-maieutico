@@ -1,0 +1,21 @@
+{
+  "name": "tutor-maieutico",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tutor Maieutico Didattico (Zero-Data, 100% Offline Loopback & LAN Endpoint) per i laboratori dell'I.I.S.S. Marconi-Hack",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.7"
+  }
+}

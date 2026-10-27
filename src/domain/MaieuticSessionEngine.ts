@@ -1,0 +1,222 @@
+import type {
+  ChatMessage,
+  ConnectionMode,
+  EnvironmentPort,
+  InferencePort,
+} from './ports';
+
+export interface DialogueTurn {
+  role: 'student' | 'tutor';
+  content: string;
+  timestampIso: string;
+}
+
+export interface StudentDraft {
+  studentCode: string;
+  compilerError: string;
+  cognitivePreCommitment: string;
+}
+
+export type StudentDraftInput = Partial<StudentDraft>;
+
+export type ConnectionStatus = 'idle' | 'online' | 'offline';
+
+export interface MaieuticSessionSnapshot extends StudentDraft {
+  endpointUrl: string;
+  connectionMode: ConnectionMode;
+  connectionStatus: ConnectionStatus;
+  availableModels: string[];
+  activeModel: string | null;
+  turns: DialogueTurn[];
+}
+
+export interface InterventionResult {
+  status: 'ok' | 'rejected_pre_commitment' | 'inference_error';
+  assistantReply?: string;
+  pedagogicalMessage?: string;
+}
+
+export interface RequestInterventionOptions {
+  stream?: boolean;
+  onToken?: (chunk: string) => void;
+}
+
+const MIN_PRE_COMMITMENT_CHARS = 15;
+const MIN_PRE_COMMITMENT_WORDS = 3;
+
+const MAIEUTIC_SYSTEM_PROMPT = `Sei il Tutor Maieutico dei laboratori di informatica dell'I.I.S.S. "Marconi-Hack".
+Opera nel rigoroso rispetto dell'Invariante di Non-Sostituzione (AUP-IA §1, art. 25 L. 132/2025):
+- Non fornire mai la soluzione completa o il codice risolutivo pronto all'uso.
+- Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo Pre-impegno Cognitivo.
+- Non esprimere mai voti, giudizi valutativi o profilazioni dello studente (CU-16..19 esclusi).`;
+
+function isMeaningfulPreCommitment(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < MIN_PRE_COMMITMENT_CHARS) {
+    return false;
+  }
+  const words = trimmed.split(/\s+/).filter((w) => w.length > 0);
+  return words.length >= MIN_PRE_COMMITMENT_WORDS;
+}
+
+function emptyDraft(): StudentDraft {
+  return {
+    studentCode: '',
+    compilerError: '',
+    cognitivePreCommitment: '',
+  };
+}
+
+export class MaieuticSessionEngine {
+  private readonly inferencePort: InferencePort;
+  private readonly environmentPort: EnvironmentPort;
+
+  private connectionStatus: ConnectionStatus = 'idle';
+  private availableModels: string[] = [];
+  private activeModel: string | null = null;
+
+  private draft: StudentDraft = emptyDraft();
+  private turns: DialogueTurn[] = [];
+
+  constructor(inferencePort: InferencePort, environmentPort: EnvironmentPort) {
+    this.inferencePort = inferencePort;
+    this.environmentPort = environmentPort;
+  }
+
+  getSnapshot(): MaieuticSessionSnapshot {
+    return {
+      endpointUrl: this.inferencePort.getEndpointUrl(),
+      connectionMode: this.inferencePort.getConnectionMode(),
+      connectionStatus: this.connectionStatus,
+      availableModels: [...this.availableModels],
+      activeModel: this.activeModel,
+      studentCode: this.draft.studentCode,
+      compilerError: this.draft.compilerError,
+      cognitivePreCommitment: this.draft.cognitivePreCommitment,
+      turns: this.turns.map((turn) => ({ ...turn })),
+    };
+  }
+
+  updateStudentDraft(input: StudentDraftInput): void {
+    this.draft = {
+      ...this.draft,
+      ...(input.studentCode !== undefined ? { studentCode: input.studentCode } : {}),
+      ...(input.compilerError !== undefined ? { compilerError: input.compilerError } : {}),
+      ...(input.cognitivePreCommitment !== undefined
+        ? { cognitivePreCommitment: input.cognitivePreCommitment }
+        : {}),
+    };
+  }
+
+  async checkInferenceConnection(): Promise<MaieuticSessionSnapshot> {
+    try {
+      const models = await this.inferencePort.listModels();
+      this.availableModels = models;
+      this.connectionStatus = 'online';
+      if (models.length > 0 && (!this.activeModel || !models.includes(this.activeModel))) {
+        this.activeModel = models[0];
+      }
+    } catch {
+      this.availableModels = [];
+      this.activeModel = null;
+      this.connectionStatus = 'offline';
+    }
+    return this.getSnapshot();
+  }
+
+  async configureEndpoint(url: string): Promise<MaieuticSessionSnapshot> {
+    this.inferencePort.setEndpointUrl(url);
+    return this.checkInferenceConnection();
+  }
+
+  async requestMaieuticIntervention(
+    studentFollowUp?: string,
+    options?: RequestInterventionOptions
+  ): Promise<InterventionResult> {
+    if (!isMeaningfulPreCommitment(this.draft.cognitivePreCommitment)) {
+      return {
+        status: 'rejected_pre_commitment',
+        pedagogicalMessage:
+          'Pre-impegno Cognitivo obbligatorio (AUP-IA §1): prima di richiedere un Intervento Maieutico, descrivi cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (almeno una frase completa).',
+      };
+    }
+
+    const isFollowUpReply = studentFollowUp !== undefined;
+    const followUpTrimmed = studentFollowUp?.trim() ?? '';
+
+    if (isFollowUpReply && followUpTrimmed.length === 0) {
+      return {
+        status: 'rejected_pre_commitment',
+        pedagogicalMessage:
+          'Inserisci una risposta alla domanda socratica del Tutor Maieutico prima di inviare.',
+      };
+    }
+
+    const studentMessageContent = isFollowUpReply
+      ? followUpTrimmed
+      : this.buildDraftPrompt();
+
+    const messages: ChatMessage[] = [
+      { role: 'system', content: MAIEUTIC_SYSTEM_PROMPT },
+      ...this.turns.map((t): ChatMessage => ({
+        role: t.role === 'student' ? 'user' : 'assistant',
+        content: t.content,
+      })),
+      { role: 'user', content: studentMessageContent },
+    ];
+
+    try {
+      const reply = await this.inferencePort.completeChat(messages, {
+        model: this.activeModel ?? undefined,
+        stream: options?.stream,
+        onToken: options?.onToken,
+      });
+
+      const timestamp = this.environmentPort.nowIso();
+      this.turns.push({
+        role: 'student',
+        content: studentMessageContent,
+        timestampIso: timestamp,
+      });
+      this.turns.push({
+        role: 'tutor',
+        content: reply,
+        timestampIso: timestamp,
+      });
+      this.connectionStatus = 'online';
+
+      return {
+        status: 'ok',
+        assistantReply: reply,
+      };
+    } catch (err) {
+      this.connectionStatus = 'offline';
+      const detail = err instanceof Error ? err.message : 'Errore sconosciuto';
+      return {
+        status: 'inference_error',
+        pedagogicalMessage: `Impossibile raggiungere il Motore di Inferenza (${detail}). Verifica che LM Studio sia attivo sull'endpoint configurato.`,
+      };
+    }
+  }
+
+  resetSession(): void {
+    this.draft = emptyDraft();
+    this.turns = [];
+  }
+
+  private buildDraftPrompt(): string {
+    const sections: string[] = [];
+    if (this.draft.studentCode.trim().length > 0) {
+      sections.push(
+        `### Tentativo di Codice / Pseudocodice\n\`\`\`\n${this.draft.studentCode.trim()}\n\`\`\``
+      );
+    }
+    if (this.draft.compilerError.trim().length > 0) {
+      sections.push(`### Errore Compilatore / Interprete\n${this.draft.compilerError.trim()}`);
+    }
+    sections.push(
+      `### Pre-impegno Cognitivo dello Studente\n${this.draft.cognitivePreCommitment.trim()}`
+    );
+    return sections.join('\n\n');
+  }
+}
