@@ -8,6 +8,7 @@ import type {
 export interface DialogueTurn {
   role: 'student' | 'tutor';
   content: string;
+  reasoning?: string;
   timestampIso: string;
 }
 
@@ -31,7 +32,7 @@ export interface MaieuticSessionSnapshot extends StudentDraft {
 }
 
 export interface InterventionResult {
-  status: 'ok' | 'rejected_pre_commitment' | 'inference_error';
+  status: 'ok' | 'rejected_pre_commitment' | 'rejected_empty_reply' | 'inference_error';
   assistantReply?: string;
   pedagogicalMessage?: string;
 }
@@ -39,15 +40,16 @@ export interface InterventionResult {
 export interface RequestInterventionOptions {
   stream?: boolean;
   onToken?: (chunk: string) => void;
+  onReasoningToken?: (chunk: string) => void;
 }
 
 const MIN_PRE_COMMITMENT_CHARS = 15;
 const MIN_PRE_COMMITMENT_WORDS = 3;
 
 const MAIEUTIC_SYSTEM_PROMPT = `Sei il Tutor Maieutico dei laboratori di informatica dell'I.I.S.S. "Marconi-Hack".
-Opera nel rigoroso rispetto dell'Invariante di Non-Sostituzione (AUP-IA §1, art. 25 L. 132/2025):
+Opera nel rigoroso rispetto dell'invariante di non-sostituzione (AUP-IA §1, art. 25 L. 132/2025):
 - Non fornire mai la soluzione completa o il codice risolutivo pronto all'uso.
-- Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo Pre-impegno Cognitivo.
+- Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo pre-impegno cognitivo.
 - Non esprimere mai voti, giudizi valutativi o profilazioni dello studente (CU-16..19 esclusi).`;
 
 function isMeaningfulPreCommitment(text: string): boolean {
@@ -145,7 +147,7 @@ export class MaieuticSessionEngine {
       return {
         status: 'rejected_pre_commitment',
         pedagogicalMessage:
-          'Pre-impegno Cognitivo obbligatorio (AUP-IA §1): prima di richiedere un Intervento Maieutico, descrivi cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (almeno una frase completa).',
+          'Pre-impegno cognitivo obbligatorio (AUP-IA §1): prima di richiedere un intervento maieutico, descrivi cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (almeno una frase completa).',
       };
     }
 
@@ -154,9 +156,9 @@ export class MaieuticSessionEngine {
 
     if (isFollowUpReply && followUpTrimmed.length === 0) {
       return {
-        status: 'rejected_pre_commitment',
+        status: 'rejected_empty_reply',
         pedagogicalMessage:
-          'Inserisci una risposta alla domanda socratica del Tutor Maieutico prima di inviare.',
+          'Inserisci una risposta alla domanda socratica del tutor maieutico prima di inviare.',
       };
     }
 
@@ -181,15 +183,21 @@ export class MaieuticSessionEngine {
     this.turns.push(studentTurn);
 
     try {
+      let accumulatedReasoning = '';
       const reply = await this.inferencePort.completeChat(messages, {
         model: this.activeModel ?? undefined,
-        stream: options?.stream,
+        stream: options?.stream ?? true,
         onToken: options?.onToken,
+        onReasoningToken: (chunk) => {
+          accumulatedReasoning += chunk;
+          options?.onReasoningToken?.(chunk);
+        },
       });
 
       this.turns.push({
         role: 'tutor',
         content: reply,
+        ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
         timestampIso: this.environmentPort.nowIso(),
       });
       this.connectionStatus = 'online';

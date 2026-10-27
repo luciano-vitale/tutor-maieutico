@@ -127,5 +127,55 @@ describe('LmStudioHttpAdapter', () => {
     expect(receivedTokens).toEqual(['Osserva ', "l'indice i", ' nel ciclo.']);
     expect(fullText).toBe("Osserva l'indice i nel ciclo.");
   });
+
+  test('emette subito i token di ragionamento (delta.reasoning_content e tag <think>) via onReasoningToken e restituisce solo la risposta maieutica pulita', async () => {
+    const encoder = new TextEncoder();
+    const sseChunks = [
+      'data: {"choices":[{"delta":{"reasoning_content":"Analizzo il ciclo "}}]}\r\n\r\n',
+      'data: {"choices":[{"delta":{"reasoning_content":"dello studente."}}]}\r\n\r\n',
+      'data: {"choices":[{"delta":{"content":"<think>Verifica indice</think>Quale valore "}}]}\r\n\r\n',
+      'data: {"choices":[{"delta":{"content":"assume i al passo finale?"}}]}\r\n\r\n',
+      'data: [DONE]\r\n\r\n',
+    ];
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of sseChunks) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        controller.close();
+      },
+    });
+
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    );
+
+    const adapter = new LmStudioHttpAdapter('http://127.0.0.1:1234/v1', mockFetch);
+    const reasoningTokens: string[] = [];
+    const contentTokens: string[] = [];
+
+    const cleanReply = await adapter.completeChat(
+      [{ role: 'user', content: 'Aiutami sul ciclo.' }],
+      {
+        model: 'qwen3-8b',
+        stream: true,
+        onReasoningToken: (token) => reasoningTokens.push(token),
+        onToken: (token) => contentTokens.push(token),
+      }
+    );
+
+    expect(reasoningTokens).toEqual([
+      'Analizzo il ciclo ',
+      'dello studente.',
+      'Verifica indice',
+    ]);
+    expect(contentTokens).toEqual(['Quale valore ', 'assume i al passo finale?']);
+    expect(cleanReply).toBe('Quale valore assume i al passo finale?');
+  });
 });
+
 

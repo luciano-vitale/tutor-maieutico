@@ -11,6 +11,7 @@ export class FakeInferencePort implements InferencePort {
   private mode: ConnectionMode = 'loopback';
   public models: string[] = ['qwen2.5-coder-7b-instruct'];
   public shouldFailConnection = false;
+  public cannedReasoning = '';
   public cannedReply = 'Quale variabile controlla la terminazione del ciclo?';
   public lastMessages: ChatMessage[] = [];
 
@@ -57,9 +58,14 @@ export class FakeInferencePort implements InferencePort {
       throw new Error('Motore di Inferenza non raggiungibile');
     }
     this.lastMessages = messages;
-    if (options?.stream && options.onToken) {
-      for (const word of this.cannedReply.split(' ')) {
-        options.onToken(`${word} `);
+    if (options?.stream) {
+      if (this.cannedReasoning && options.onReasoningToken) {
+        options.onReasoningToken(this.cannedReasoning);
+      }
+      if (options.onToken) {
+        for (const word of this.cannedReply.split(' ')) {
+          options.onToken(`${word} `);
+        }
       }
     }
     return this.cannedReply;

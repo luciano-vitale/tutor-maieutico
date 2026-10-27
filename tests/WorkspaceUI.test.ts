@@ -149,4 +149,112 @@ describe('WorkspaceUI', () => {
       /Endpoint LAN/i
     );
   });
+
+  test('gestisce la barra laterale collassabile stile LM Studio (con riapertura automatica se manca il pre-impegno cognitivo), il selettore tema chiaro/scuro in RAM e lo streaming in-place senza blinking', async () => {
+    const localSetItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+
+    let streamCallbacks: {
+      onToken?: (chunk: string) => void;
+      onReasoningToken?: (chunk: string) => void;
+    } = {};
+    let resolveChat!: (value: string) => void;
+
+    inference.completeChat = vi.fn().mockImplementation((_messages, options) => {
+      expect(options?.stream).toBe(true);
+      streamCallbacks = {
+        onToken: options?.onToken,
+        onReasoningToken: options?.onReasoningToken,
+      };
+      return new Promise<string>((resolve) => {
+        resolveChat = resolve;
+      });
+    });
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    // 1. Nessuna checkbox toggle SSE ridondante
+    expect(root.querySelector('#stream-mode-checkbox')).toBeNull();
+
+    // 2. Sidebar stile LM Studio: aperta all'avvio, chiudibile con l'icona, riaperta se manca il pre-impegno
+    const sidebarBtn = root.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle-btn"]')!;
+    const leftSidebar = root.querySelector<HTMLElement>('[data-testid="left-panel-context"]')!;
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    expect(sidebarBtn).not.toBeNull();
+    expect(sidebarBtn.querySelector('svg')).not.toBeNull();
+    expect(sidebarBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(leftSidebar.hidden).toBe(false);
+
+    sidebarBtn.click();
+    expect(sidebarBtn.getAttribute('aria-expanded')).toBe('false');
+    expect(leftSidebar.hidden).toBe(true);
+
+    // Tentativo di invio dal composer mentre la sidebar è chiusa e il pre-impegno cognitivo è vuoto
+    const followUpInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
+    const followUpForm = root.querySelector<HTMLFormElement>('#socratic-followup-form')!;
+    followUpInput.value = 'Non capisco perché non funziona';
+    followUpForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(sidebarBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(leftSidebar.hidden).toBe(false);
+    expect(document.activeElement).toBe(preCommitmentInput);
+
+    // 3. Selettore tema chiaro/scuro esclusivamente in RAM
+    const themeBtn = root.querySelector<HTMLButtonElement>('[data-testid="theme-toggle-btn"]')!;
+    expect(themeBtn).not.toBeNull();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+
+    themeBtn.click();
+    expect(document.documentElement.dataset.theme).toBe('light');
+
+    themeBtn.click();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localSetItemSpy).not.toHaveBeenCalled();
+
+    // 4. Streaming in-place senza blinking (identità dei nodi DOM preservata e blocco reasoning collassabile)
+    preCommitmentInput.value =
+      'Ho impostato il ciclo con indice i da 0 a N, ma all\'ultimo giro legge fuori dall\'array.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const contextForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    contextForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+    const studentTurnElBefore = dialogueList.querySelector('.tm-turn-student')!;
+    const tutorTurnElBefore = dialogueList.querySelector('.tm-turn-tutor')!;
+    expect(studentTurnElBefore).not.toBeNull();
+    expect(tutorTurnElBefore).not.toBeNull();
+
+    // Arrivo del primo token di ragionamento: blocco <details> aperto
+    streamCallbacks.onReasoningToken?.('Controllo i limiti dell\'array...');
+    const reasoningDetails = tutorTurnElBefore.querySelector<HTMLDetailsElement>(
+      '[data-testid="tutor-reasoning-details"]'
+    )!;
+    expect(reasoningDetails).not.toBeNull();
+    expect(reasoningDetails.open).toBe(true);
+    expect(reasoningDetails.textContent).toContain("Controllo i limiti dell'array...");
+
+    // Arrivo dei token della risposta maieutica: il blocco <details> si collassa e i nodi DOM NON vengono ricreati
+    streamCallbacks.onToken?.('Qual è ');
+    expect(reasoningDetails.open).toBe(false);
+    expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
+    expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
+
+    streamCallbacks.onToken?.("l'ultimo indice valido?");
+    expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
+    expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
+    expect(tutorTurnElBefore.querySelector('.tm-stream-cursor')).toBeNull();
+
+    // Fine stream: il nodo del tutor resta lo stesso identico elemento DOM (zero animazione fade-in ripetuta)
+    resolveChat("Qual è l'ultimo indice valido?");
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
+    expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
+    expect(tutorTurnElBefore.textContent).toContain("Qual è l'ultimo indice valido?");
+  });
 });
+

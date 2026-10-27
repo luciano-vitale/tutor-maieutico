@@ -93,4 +93,44 @@ describe('MaieuticSessionEngine', () => {
     expect(snapshot.cognitivePreCommitment).toBe('');
     expect(snapshot.turns).toEqual([]);
   });
+
+  test('attiva lo streaming di default, propaga onReasoningToken e onToken, conserva il ragionamento nel turno UI ma lo esclude dal payload messages dei turni successivi', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    inference.cannedReasoning = 'Lo studente confonde indice e lunghezza.';
+    inference.cannedReply = 'Qual è l\'indice del primo elemento?';
+
+    engine.updateStudentDraft({
+      studentCode: 'a[10] = 5;',
+      compilerError: 'Out of bounds',
+      cognitivePreCommitment: 'Ho provato ad assegnare il decimo elemento usando l\'indice 10.',
+    });
+
+    const reasoningChunks: string[] = [];
+    const contentChunks: string[] = [];
+
+    const first = await engine.requestMaieuticIntervention(undefined, {
+      onReasoningToken: (chunk) => reasoningChunks.push(chunk),
+      onToken: (chunk) => contentChunks.push(chunk),
+    });
+
+    expect(first.status).toBe('ok');
+    expect(reasoningChunks.join('')).toBe('Lo studente confonde indice e lunghezza.');
+    expect(contentChunks.join('').trim()).toBe("Qual è l'indice del primo elemento?");
+
+    const turnsAfterFirst = engine.getSnapshot().turns;
+    expect(turnsAfterFirst[1].content).toBe("Qual è l'indice del primo elemento?");
+    expect(turnsAfterFirst[1].reasoning).toBe('Lo studente confonde indice e lunghezza.');
+
+    inference.cannedReasoning = '';
+    inference.cannedReply = 'Bene, quindi quale sarà l\'ultimo indice?';
+    await engine.requestMaieuticIntervention('L\'indice del primo elemento è 0.');
+
+    const assistantMsgInHistory = inference.lastMessages.find((m) => m.role === 'assistant');
+    expect(assistantMsgInHistory?.content).toBe("Qual è l'indice del primo elemento?");
+    expect(assistantMsgInHistory?.content).not.toContain('confonde indice');
+  });
 });
+
