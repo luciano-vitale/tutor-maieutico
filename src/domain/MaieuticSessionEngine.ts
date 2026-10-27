@@ -114,7 +114,9 @@ export class MaieuticSessionEngine {
       this.availableModels = models;
       this.connectionStatus = 'online';
       if (models.length > 0 && (!this.activeModel || !models.includes(this.activeModel))) {
-        this.activeModel = models[0];
+        const preferredChatModel =
+          models.find((m) => !/embed|phonon|whisper|tts|rerank/i.test(m)) ?? models[0];
+        this.activeModel = preferredChatModel;
       }
     } catch {
       this.availableModels = [];
@@ -122,6 +124,12 @@ export class MaieuticSessionEngine {
       this.connectionStatus = 'offline';
     }
     return this.getSnapshot();
+  }
+
+  setActiveModel(modelId: string): void {
+    if (this.availableModels.includes(modelId)) {
+      this.activeModel = modelId;
+    }
   }
 
   async configureEndpoint(url: string): Promise<MaieuticSessionSnapshot> {
@@ -165,6 +173,13 @@ export class MaieuticSessionEngine {
       { role: 'user', content: studentMessageContent },
     ];
 
+    const studentTurn: DialogueTurn = {
+      role: 'student',
+      content: studentMessageContent,
+      timestampIso: this.environmentPort.nowIso(),
+    };
+    this.turns.push(studentTurn);
+
     try {
       const reply = await this.inferencePort.completeChat(messages, {
         model: this.activeModel ?? undefined,
@@ -172,16 +187,10 @@ export class MaieuticSessionEngine {
         onToken: options?.onToken,
       });
 
-      const timestamp = this.environmentPort.nowIso();
-      this.turns.push({
-        role: 'student',
-        content: studentMessageContent,
-        timestampIso: timestamp,
-      });
       this.turns.push({
         role: 'tutor',
         content: reply,
-        timestampIso: timestamp,
+        timestampIso: this.environmentPort.nowIso(),
       });
       this.connectionStatus = 'online';
 
@@ -190,11 +199,12 @@ export class MaieuticSessionEngine {
         assistantReply: reply,
       };
     } catch (err) {
+      this.turns.pop();
       this.connectionStatus = 'offline';
       const detail = err instanceof Error ? err.message : 'Errore sconosciuto';
       return {
         status: 'inference_error',
-        pedagogicalMessage: `Impossibile raggiungere il Motore di Inferenza (${detail}). Verifica che LM Studio sia attivo sull'endpoint configurato.`,
+        pedagogicalMessage: `Impossibile raggiungere il motore di inferenza (${detail}). Verifica che LM Studio sia attivo sull'endpoint configurato.`,
       };
     }
   }
@@ -208,14 +218,14 @@ export class MaieuticSessionEngine {
     const sections: string[] = [];
     if (this.draft.studentCode.trim().length > 0) {
       sections.push(
-        `### Tentativo di Codice / Pseudocodice\n\`\`\`\n${this.draft.studentCode.trim()}\n\`\`\``
+        `### Tentativo di codice o pseudocodice\n\`\`\`\n${this.draft.studentCode.trim()}\n\`\`\``
       );
     }
     if (this.draft.compilerError.trim().length > 0) {
-      sections.push(`### Errore Compilatore / Interprete\n${this.draft.compilerError.trim()}`);
+      sections.push(`### Errore del compilatore o interprete\n${this.draft.compilerError.trim()}`);
     }
     sections.push(
-      `### Pre-impegno Cognitivo dello Studente\n${this.draft.cognitivePreCommitment.trim()}`
+      `### Pre-impegno cognitivo dello studente\n${this.draft.cognitivePreCommitment.trim()}`
     );
     return sections.join('\n\n');
   }
