@@ -114,8 +114,8 @@ export async function mountWorkspaceUI(
               type="button"
               class="tm-icon-btn tm-connection-toggle-btn"
               data-testid="connection-toggle-btn"
-              data-tooltip="Mostra o nascondi le impostazioni di connessione"
-              aria-label="Mostra o nascondi le impostazioni di connessione"
+              data-tooltip="Mostra o nascondi le impostazioni"
+              aria-label="Mostra o nascondi le impostazioni"
               aria-controls="connection-settings-panel"
               aria-expanded="false"
             >
@@ -269,14 +269,21 @@ export async function mountWorkspaceUI(
         >
           <div class="tm-panel-header">
             <h2 id="settings-panel-heading" class="tm-panel-title">
-              Impostazioni di connessione
+              Impostazioni
             </h2>
           </div>
 
           <div class="tm-settings-content">
-            <div class="tm-status-pill" data-testid="connection-status-badge" aria-live="polite">
+            <div class="tm-status-row">
+              <div
+                class="tm-status-box"
+                data-testid="connection-status-badge"
+                role="status"
+                aria-live="polite"
+              >
+                <span class="tm-status-text"></span>
+              </div>
               <span class="tm-led" aria-hidden="true"></span>
-              <span class="tm-status-text"></span>
             </div>
 
             <div class="tm-form-group">
@@ -501,6 +508,10 @@ export async function mountWorkspaceUI(
     badgeTextEl.textContent = formatConnectionBadgeText(snapshot);
     badgeEl.dataset.status = snapshot.connectionStatus;
     badgeEl.dataset.mode = snapshot.connectionMode;
+    const ledEl = container.querySelector<HTMLElement>('.tm-status-row .tm-led');
+    if (ledEl) {
+      ledEl.dataset.status = snapshot.connectionStatus;
+    }
 
     if (snapshot.availableModels.length > 0) {
       modelSelect.hidden = false;

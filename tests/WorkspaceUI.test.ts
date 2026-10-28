@@ -304,6 +304,17 @@ describe('WorkspaceUI', () => {
       connectionBtn,
     ]);
     expect(connectionBtn.querySelector('svg')).not.toBeNull();
+    expect(connectionBtn.getAttribute('data-tooltip')).toBe('Mostra o nascondi le impostazioni');
+    expect(connectionBtn.getAttribute('aria-label')).toBe('Mostra o nascondi le impostazioni');
+
+    // Verifica intestazione pannello impostazioni, casella rettangolare e pallino LED esterno a destra
+    expect(connectionPanel.querySelector('#settings-panel-heading')?.textContent?.trim()).toBe('Impostazioni');
+    const statusRow = connectionPanel.querySelector('.tm-status-row');
+    expect(statusRow).not.toBeNull();
+    const statusBox = statusRow?.querySelector('.tm-status-box[data-testid="connection-status-badge"]');
+    expect(statusBox).not.toBeNull();
+    expect(statusRow?.querySelector('.tm-led')).not.toBeNull();
+    expect(statusBox?.querySelector('.tm-led')).toBeNull(); // Il pallino LED è all'esterno della casella
 
     // Topbar Disclosure AUP-IA parte chiusa all'avvio e si apre/chiude al clic
     expect(topbarBtn.getAttribute('aria-expanded')).toBe('false');
