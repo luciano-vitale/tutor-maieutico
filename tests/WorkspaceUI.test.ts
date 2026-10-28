@@ -21,6 +21,7 @@ describe('WorkspaceUI', () => {
 
     const banner = root.querySelector('[data-testid="aup-disclosure-banner"]');
     expect(banner).not.toBeNull();
+    expect(banner?.querySelector('.tm-disclosure-icon')).toBeNull();
     expect(banner?.textContent).toMatch(/AUP-IA/i);
     expect(banner?.textContent).toMatch(/CU-05/);
     expect(banner?.textContent).toMatch(/CU-11/);
@@ -361,6 +362,11 @@ describe('WorkspaceUI', () => {
     const firstFormGroup = form.querySelector('.tm-form-group');
     expect(firstFormGroup?.classList.contains('tm-precommitment-card')).toBe(true);
     expect(firstFormGroup?.querySelector('#pre-commitment-input')).not.toBeNull();
+
+    const preCommitment = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const studentCode = root.querySelector<HTMLTextAreaElement>('#student-code-input')!;
+    expect(preCommitment.rows).toBe(7);
+    expect(studentCode.rows).toBe(7);
   });
 
   test('trasforma il pulsante di invio in pulsante di stop cliccabile durante l\'elaborazione e interrompe l\'intervento al click', async () => {

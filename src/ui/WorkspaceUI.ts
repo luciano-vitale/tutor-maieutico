@@ -162,7 +162,7 @@ export async function mountWorkspaceUI(
                   id="pre-commitment-input"
                   name="cognitivePreCommitment"
                   class="tm-textarea"
-                  rows="3"
+                  rows="7"
                   aria-describedby="pre-commitment-desc"
                   placeholder="Es.: Ho impostato un ciclo for da 0 a N per sommare gli elementi, ma ottengo un valore errato all'ultimo passo..."
                   required
@@ -335,7 +335,6 @@ export async function mountWorkspaceUI(
           aria-label="Informativa AUP-IA e PUIA"
           hidden
         >
-          <span class="tm-disclosure-icon">${ICONS.shieldInfo}</span>
           <div class="tm-disclosure-text">
             <strong>Disclosure AUP-IA (CU-05, CU-11, CU-15):</strong>
             sistema di IA generativa socratica locale (può commettere errori: verifica sempre nel tuo IDE e con il docente).

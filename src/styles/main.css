@@ -130,6 +130,7 @@ body {
 .tm-disclosure-banner {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.55rem;
   padding: 0.35rem 1.25rem;
   background: var(--tm-surface-subtle);
@@ -148,6 +149,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 0.35rem 0.65rem;
 }
 
@@ -159,6 +162,7 @@ body {
 .tm-disclosure-pills {
   display: inline-flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.3rem;
 }
 
