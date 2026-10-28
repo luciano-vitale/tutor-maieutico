@@ -3,7 +3,7 @@ import type { MaieuticSessionEngine, MaieuticSessionSnapshot } from '../domain/M
 const ICONS = {
   brandSparkles: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg>`,
   sidebarLeft: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M9 3v18"/></svg>`,
-  topbarPanel: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M3 9h18"/></svg>`,
+  bottombarInfo: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M3 15h18"/><path d="M12 6.5v.01"/><path d="M12 9.5v3"/></svg>`,
   sunLight: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`,
   moonDark: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
   shieldInfo: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
@@ -60,33 +60,12 @@ export async function mountWorkspaceUI(
   container.innerHTML = `
     <div class="tm-shell">
       <header class="tm-header" role="banner">
-        <div
-          id="aup-disclosure-topbar"
-          class="tm-disclosure-banner"
-          data-testid="aup-disclosure-banner"
-          role="region"
-          aria-label="Informativa AUP-IA e PUIA"
-          hidden
-        >
-          <span class="tm-disclosure-icon">${ICONS.shieldInfo}</span>
-          <div class="tm-disclosure-text">
-            <strong>Disclosure AUP-IA (CU-05, CU-11, CU-15):</strong>
-            sistema di IA generativa socratica locale (può commettere errori: verifica sempre nel tuo IDE e con il docente).
-            <span class="tm-disclosure-pills">
-              <span class="tm-pill">AUP-IA §1: primato dell'apprendimento</span>
-              <span class="tm-pill">PUIA §4: regime zero-data (solo RAM)</span>
-              <span class="tm-pill">Esclusione tassativa CU-16..19: zero voti o profilazione</span>
-            </span>
-          </div>
-        </div>
-
         <div class="tm-navbar">
           <div class="tm-brand">
             <h1 class="tm-title">Stud<span class="tm-brand-i">I</span><span class="tm-brand-a">A</span></h1>
             <span class="tm-subtitle">
-              <span class="tm-subtitle-role">Tutor Maieutico</span>
-              <span class="tm-subtitle-separator"> — </span>
-              <span class="tm-subtitle-school">I.I.S.S. "Marconi-Hack"</span>
+              <span class="tm-subtitle-separator">· </span>
+              <span class="tm-subtitle-motto">Impara ragionando!</span>
             </span>
           </div>
 
@@ -104,14 +83,14 @@ export async function mountWorkspaceUI(
             </button>
             <button
               type="button"
-              class="tm-icon-btn tm-topbar-toggle-btn"
+              class="tm-icon-btn tm-topbar-toggle-btn tm-bottombar-toggle-btn"
               data-testid="topbar-toggle-btn"
-              data-tooltip="Mostra o nascondi la barra superiore di disclosure AUP-IA"
-              aria-label="Mostra o nascondi la barra superiore di disclosure AUP-IA"
-              aria-controls="aup-disclosure-topbar"
+              data-tooltip="Mostra o nascondi l'informativa AUP-IA"
+              aria-label="Mostra o nascondi l'informativa AUP-IA"
+              aria-controls="aup-disclosure-bottombar"
               aria-expanded="false"
             >
-              ${ICONS.topbarPanel}
+              ${ICONS.bottombarInfo}
             </button>
             <button
               type="button"
@@ -275,7 +254,7 @@ export async function mountWorkspaceUI(
               </button>
             </form>
             <p class="tm-composer-footnote">
-              <strong>StudIA</strong> è un'IA e può fare errori. Verifica sempre nel tuo IDE e con il docente · Regime zero-data (AUP-IA / PUIA).
+              <strong>StudIA</strong> è un'IA e può fare errori. Verifica sempre nel tuo IDE e con il docente · IISS Marconi-Hack
             </p>
           </div>
         </section>
@@ -346,6 +325,28 @@ export async function mountWorkspaceUI(
           </div>
         </aside>
       </main>
+
+      <footer class="tm-footer">
+        <div
+          id="aup-disclosure-bottombar"
+          class="tm-disclosure-banner tm-disclosure-bottombar"
+          data-testid="aup-disclosure-banner"
+          role="region"
+          aria-label="Informativa AUP-IA e PUIA"
+          hidden
+        >
+          <span class="tm-disclosure-icon">${ICONS.shieldInfo}</span>
+          <div class="tm-disclosure-text">
+            <strong>Disclosure AUP-IA (CU-05, CU-11, CU-15):</strong>
+            sistema di IA generativa socratica locale (può commettere errori: verifica sempre nel tuo IDE e con il docente).
+            <span class="tm-disclosure-pills">
+              <span class="tm-pill">AUP-IA §1: primato dell'apprendimento</span>
+              <span class="tm-pill">PUIA §4: regime zero-data (solo RAM)</span>
+              <span class="tm-pill">Esclusione tassativa CU-16..19: zero voti o profilazione</span>
+            </span>
+          </div>
+        </div>
+      </footer>
     </div>
   `;
 

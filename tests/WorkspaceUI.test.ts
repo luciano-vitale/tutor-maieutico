@@ -261,7 +261,7 @@ describe('WorkspaceUI', () => {
     expect(tutorTurnElBefore.querySelector('[data-testid="copy-turn-btn"]')).not.toBeNull();
   });
 
-  test('razionalizza la UI con StudIA come titolo, Tutor Maieutico come sottotitolo sulla stessa riga, tutte le 5 icone a destra e pannello di connessione verticale', async () => {
+  test('razionalizza la UI con StudIA come titolo, Impara ragionando! come sottotitolo sulla stessa riga, tutte le 5 icone a destra e pannello di connessione verticale', async () => {
     const root = document.getElementById('app')!;
     const engine = new MaieuticSessionEngine(
       new FakeInferencePort(),
@@ -276,8 +276,12 @@ describe('WorkspaceUI', () => {
     expect(titleEl.querySelector('.tm-brand-a')?.textContent).toBe('A');
 
     const subtitleEl = root.querySelector<HTMLElement>('.tm-subtitle')!;
-    expect(subtitleEl.textContent).toContain('Tutor Maieutico');
-    expect(subtitleEl.textContent).toContain('Marconi-Hack');
+    expect(subtitleEl.textContent).toContain('Impara ragionando!');
+
+    const footnoteEl = root.querySelector<HTMLElement>('.tm-composer-footnote')!;
+    expect(footnoteEl.textContent).toContain(
+      "StudIA è un'IA e può fare errori. Verifica sempre nel tuo IDE e con il docente · IISS Marconi-Hack"
+    );
 
     const toolbar = root.querySelector<HTMLElement>('.tm-toolbar')!;
     const sidebarBtn = root.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle-btn"]')!;

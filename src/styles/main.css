@@ -122,6 +122,11 @@ body {
   z-index: 30;
 }
 
+.tm-footer {
+  flex-shrink: 0;
+  z-index: 30;
+}
+
 .tm-disclosure-banner {
   display: flex;
   align-items: center;
@@ -130,6 +135,7 @@ body {
   background: var(--tm-surface-subtle);
   font-size: 0.74rem;
   color: var(--tm-text-muted);
+  border-top: 1px solid var(--tm-border);
 }
 
 .tm-disclosure-icon {
