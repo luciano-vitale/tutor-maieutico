@@ -34,7 +34,8 @@ describe('WorkspaceUI', () => {
     );
 
     const newSessionBtn = root.querySelector('[data-testid="new-session-btn"]');
-    expect(newSessionBtn?.getAttribute('data-tooltip')).toMatch(/Nuova sessione/i);
+    expect(newSessionBtn?.getAttribute('data-tooltip')).toBe('Nuova sessione');
+    expect(newSessionBtn?.textContent?.trim()).toBe('');
     expect(newSessionBtn?.querySelector('svg')).not.toBeNull();
 
     const sendFollowUpBtn = root.querySelector('[data-testid="send-followup-btn"]');
@@ -202,16 +203,16 @@ describe('WorkspaceUI', () => {
     expect(leftSidebar.hidden).toBe(false);
     expect(document.activeElement).toBe(preCommitmentInput);
 
-    // 3. Selettore tema chiaro/scuro esclusivamente in RAM
+    // 3. Selettore tema chiaro/scuro esclusivamente in RAM (tema chiaro predefinito all'avvio)
     const themeBtn = root.querySelector<HTMLButtonElement>('[data-testid="theme-toggle-btn"]')!;
     expect(themeBtn).not.toBeNull();
-    expect(document.documentElement.dataset.theme).toBe('dark');
-
-    themeBtn.click();
     expect(document.documentElement.dataset.theme).toBe('light');
 
     themeBtn.click();
     expect(document.documentElement.dataset.theme).toBe('dark');
+
+    themeBtn.click();
+    expect(document.documentElement.dataset.theme).toBe('light');
     expect(localSetItemSpy).not.toHaveBeenCalled();
 
     // 4. Streaming in-place senza blinking (identità dei nodi DOM preservata e blocco reasoning collassabile)
@@ -255,9 +256,11 @@ describe('WorkspaceUI', () => {
     expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
     expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
     expect(tutorTurnElBefore.textContent).toContain("Qual è l'ultimo indice valido?");
+    expect(studentTurnElBefore.querySelector('.tm-turn-author')).toBeNull();
+    expect(tutorTurnElBefore.querySelector('[data-testid="copy-turn-btn"]')).not.toBeNull();
   });
 
-  test('mostra il titolo "StudIA Tutor maieutico" e consente di aprire e chiudere la topbar "Disclosure AUP-IA" tramite l\'icona stile LM Studio posizionata di fianco a quella della sidebar', async () => {
+  test('mostra il titolo "StudIA Tutor Maieutico" e consente di aprire e chiudere la topbar "Disclosure AUP-IA" tramite l\'icona stile LM Studio posizionata di fianco a quella della sidebar', async () => {
     const root = document.getElementById('app')!;
     const engine = new MaieuticSessionEngine(
       new FakeInferencePort(),
@@ -267,7 +270,9 @@ describe('WorkspaceUI', () => {
     await mountWorkspaceUI(root, engine);
 
     const titleEl = root.querySelector<HTMLElement>('.tm-title')!;
-    expect(titleEl.textContent).toBe('StudIA Tutor maieutico');
+    expect(titleEl.textContent).toBe('StudIA Tutor Maieutico');
+    expect(titleEl.querySelector('.tm-brand-i')?.textContent).toBe('I');
+    expect(titleEl.querySelector('.tm-brand-a')?.textContent).toBe('A');
 
     const sidebarBtn = root.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle-btn"]')!;
     const topbarBtn = root.querySelector<HTMLButtonElement>('[data-testid="topbar-toggle-btn"]')!;

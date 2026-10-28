@@ -73,3 +73,12 @@ out/
 *.sqlite
 *.sqlite3
 *.db
+
+# Images
+intestazione-marconi-hack.jpg
+
+# Screenshots
+screenshots/
+
+# Normativa
+normativa/

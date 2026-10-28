@@ -1,20 +1,21 @@
 import type { MaieuticSessionEngine, MaieuticSessionSnapshot } from '../domain/MaieuticSessionEngine';
 
 const ICONS = {
-  brandSparkles: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>`,
-  sidebarLeft: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>`,
-  topbarPanel: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg>`,
-  sunLight: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`,
-  moonDark: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
-  shieldInfo: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`,
-  plugConnect: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>`,
-  resetRam: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`,
-  codeBlock: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
-  terminalBug: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>`,
-  lightbulb: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>`,
-  sendArrow: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>`,
-  studentAvatar: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
-  spinner: `<svg class="tm-spin" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
+  brandSparkles: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg>`,
+  sidebarLeft: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M9 3v18"/></svg>`,
+  topbarPanel: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M3 9h18"/></svg>`,
+  sunLight: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`,
+  moonDark: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
+  shieldInfo: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
+  plugConnect: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>`,
+  newSessionCompose: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>`,
+  codeBlock: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
+  terminalBug: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>`,
+  lightbulb: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>`,
+  sendArrow: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>`,
+  copyTurn: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+  checkCopied: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`,
+  spinner: `<svg class="tm-spin" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
 };
 
 function escapeHtml(raw: string): string {
@@ -48,7 +49,7 @@ export async function mountWorkspaceUI(
   container: HTMLElement,
   engine: MaieuticSessionEngine
 ): Promise<void> {
-  let currentTheme: 'dark' | 'light' = 'dark';
+  let currentTheme: 'dark' | 'light' = 'light';
   let isSidebarOpen = true;
   let isTopbarOpen = true;
   document.documentElement.dataset.theme = currentTheme;
@@ -99,10 +100,9 @@ export async function mountWorkspaceUI(
             >
               ${ICONS.topbarPanel}
             </button>
-            <span class="tm-brand-logo">${ICONS.brandSparkles}</span>
             <div class="tm-brand-titles">
-              <h1 class="tm-title">StudIA Tutor maieutico</h1>
-              <span class="tm-subtitle">I.I.S.S. "Marconi-Hack" • Laboratorio zero-data</span>
+              <h1 class="tm-title">Stud<span class="tm-brand-i">I</span><span class="tm-brand-a">A</span> Tutor Maieutico</h1>
+              <span class="tm-subtitle">I.I.S.S. "Marconi-Hack"</span>
             </div>
           </div>
 
@@ -148,20 +148,20 @@ export async function mountWorkspaceUI(
               type="button"
               class="tm-icon-btn"
               data-testid="theme-toggle-btn"
-              data-tooltip="Passa al tema chiaro"
+              data-tooltip="Passa al tema scuro"
               aria-label="Cambia tema tra chiaro e scuro"
             >
-              <span class="tm-theme-icon">${ICONS.sunLight}</span>
+              <span class="tm-theme-icon">${ICONS.moonDark}</span>
             </button>
 
             <button
               type="button"
-              class="tm-icon-btn tm-icon-btn-danger"
+              class="tm-icon-btn"
               data-testid="new-session-btn"
-              data-tooltip="Nuova sessione: azzera i dati in RAM"
-              aria-label="Nuova sessione: azzera i dati in RAM"
+              data-tooltip="Nuova sessione"
+              aria-label="Nuova sessione"
             >
-              ${ICONS.resetRam}
+              ${ICONS.newSessionCompose}
             </button>
           </div>
         </div>
@@ -183,7 +183,6 @@ export async function mountWorkspaceUI(
           aria-labelledby="left-panel-heading"
         >
           <div class="tm-panel-header">
-            <span class="tm-panel-icon">${ICONS.codeBlock}</span>
             <h2 id="left-panel-heading" class="tm-panel-title">
               Contesto e tentativo dello studente
             </h2>
@@ -262,12 +261,9 @@ export async function mountWorkspaceUI(
           data-testid="right-panel-dialogue"
           aria-labelledby="right-panel-heading"
         >
-          <div class="tm-panel-header">
-            <span class="tm-panel-icon">${ICONS.brandSparkles}</span>
-            <h2 id="right-panel-heading" class="tm-panel-title">
-              Dialogo maieutico
-            </h2>
-          </div>
+          <h2 id="right-panel-heading" class="tm-sr-only">
+            Dialogo maieutico
+          </h2>
 
           <div
             class="tm-dialogue-list"
@@ -277,27 +273,32 @@ export async function mountWorkspaceUI(
             aria-label="Cronologia degli interventi maieutici"
           ></div>
 
-          <form id="socratic-followup-form" class="tm-composer" novalidate>
-            <label for="socratic-reply-input" class="tm-sr-only">
-              Rispondi alla domanda socratica del tutor maieutico
-            </label>
-            <textarea
-              id="socratic-reply-input"
-              name="socraticReply"
-              class="tm-composer-input"
-              rows="2"
-              placeholder="Rispondi alla domanda socratica del tutor... (Invio per inviare, Shift+Invio per andare a capo)"
-            ></textarea>
-            <button
-              type="submit"
-              class="tm-send-fab"
-              data-testid="send-followup-btn"
-              data-tooltip="Invia risposta socratica (Invio)"
-              aria-label="Invia risposta socratica"
-            >
-              <span class="tm-send-fab-icon">${ICONS.sendArrow}</span>
-            </button>
-          </form>
+          <div class="tm-composer-dock">
+            <form id="socratic-followup-form" class="tm-composer" novalidate>
+              <label for="socratic-reply-input" class="tm-sr-only">
+                Chiedi a StudIA o rispondi alla domanda socratica
+              </label>
+              <textarea
+                id="socratic-reply-input"
+                name="socraticReply"
+                class="tm-composer-input"
+                rows="1"
+                placeholder="Chiedi a StudIA..."
+              ></textarea>
+              <button
+                type="submit"
+                class="tm-send-fab"
+                data-testid="send-followup-btn"
+                data-tooltip="Invia risposta socratica (Invio)"
+                aria-label="Invia risposta socratica"
+              >
+                <span class="tm-send-fab-icon">${ICONS.sendArrow}</span>
+              </button>
+            </form>
+            <p class="tm-composer-footnote">
+              <strong>StudIA</strong> è un'IA e può fare errori. Verifica sempre nel tuo IDE e con il docente · Regime zero-data (AUP-IA / PUIA).
+            </p>
+          </div>
         </section>
       </main>
     </div>
@@ -392,6 +393,11 @@ export async function mountWorkspaceUI(
 
   function scrollToLatest(): void {
     dialogueList.scrollTop = dialogueList.scrollHeight;
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        dialogueList.scrollTop = dialogueList.scrollHeight;
+      });
+    }
   }
 
   function renderHeaderState(snapshot: MaieuticSessionSnapshot): void {
@@ -417,53 +423,81 @@ export async function mountWorkspaceUI(
     }
   }
 
+  function bindCopyTurnButton(btn: HTMLButtonElement, getText: () => string): void {
+    btn.addEventListener('click', () => {
+      const text = getText();
+      void navigator.clipboard?.writeText?.(text);
+      btn.innerHTML = ICONS.checkCopied;
+      btn.setAttribute('data-tooltip', 'Copiato');
+      setTimeout(() => {
+        btn.innerHTML = ICONS.copyTurn;
+        btn.setAttribute('data-tooltip', 'Copia intervento');
+      }, 1500);
+    });
+  }
+
   function createTurnElement(
     turn: MaieuticSessionSnapshot['turns'][number],
     idx: number,
     isPendingStudentTurn: boolean
   ): HTMLElement {
     const isStudent = turn.role === 'student';
-    const roleLabel = isStudent ? 'Tu (studente)' : 'Tutor maieutico';
     const roleClass = isStudent ? 'tm-turn-student' : 'tm-turn-tutor';
-    const avatarSvg = isStudent ? ICONS.studentAvatar : ICONS.brandSparkles;
 
     const article = document.createElement('article');
     article.className = `tm-turn ${roleClass}`;
     article.dataset.turnIndex = String(idx);
 
-    const sentBadge = isPendingStudentTurn
-      ? `<span class="tm-sent-pill" data-testid="message-sent-indicator">Inviato</span>`
+    if (isStudent) {
+      const sentBadge = isPendingStudentTurn
+        ? `<span class="tm-sent-pill" data-testid="message-sent-indicator">Inviato</span>`
+        : '';
+      article.innerHTML = `
+        ${sentBadge}
+        <div class="tm-turn-body">${escapeHtml(turn.content)}</div>
+      `;
+      return article;
+    }
+
+    const reasoningBlock = turn.reasoning
+      ? `<details class="tm-reasoning-block" data-testid="tutor-reasoning-details">
+           <summary class="tm-reasoning-summary">Ragionamento del modello</summary>
+           <div class="tm-reasoning-body">${escapeHtml(turn.reasoning)}</div>
+         </details>`
       : '';
 
-    const reasoningBlock =
-      !isStudent && turn.reasoning
-        ? `<details class="tm-reasoning-block" data-testid="tutor-reasoning-details">
-             <summary class="tm-reasoning-summary">Ragionamento del modello</summary>
-             <div class="tm-reasoning-body">${escapeHtml(turn.reasoning)}</div>
-           </details>`
-        : '';
-
     article.innerHTML = `
-      <header class="tm-turn-header">
-        <span class="tm-avatar">${avatarSvg}</span>
-        <strong class="tm-turn-author">${roleLabel}</strong>
-        ${sentBadge}
-      </header>
       ${reasoningBlock}
       <div class="tm-turn-body">${escapeHtml(turn.content)}</div>
+      <footer class="tm-turn-actions">
+        <button
+          type="button"
+          class="tm-turn-action-btn"
+          data-testid="copy-turn-btn"
+          data-tooltip="Copia intervento"
+          aria-label="Copia intervento maieutico"
+        >
+          ${ICONS.copyTurn}
+        </button>
+      </footer>
     `;
+
+    const copyBtn = article.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    bindCopyTurnButton(copyBtn, () => turn.content);
+
     return article;
   }
 
   function createPendingTutorElement(): {
     article: HTMLElement;
-    avatarEl: HTMLElement;
     badgeEl: HTMLElement;
     reasoningDetailsEl: HTMLDetailsElement;
     reasoningSummaryEl: HTMLElement;
     reasoningBodyEl: HTMLElement;
     loaderEl: HTMLElement;
     bodyEl: HTMLElement;
+    actionsEl: HTMLElement;
+    copyBtnEl: HTMLButtonElement;
   } {
     const article = document.createElement('article');
     article.className = 'tm-turn tm-turn-tutor tm-turn-thinking';
@@ -471,9 +505,7 @@ export async function mountWorkspaceUI(
     article.dataset.testid = 'tutor-thinking-indicator';
     article.innerHTML = `
       <header class="tm-turn-header">
-        <span class="tm-avatar tm-avatar-pulse">${ICONS.brandSparkles}</span>
-        <strong class="tm-turn-author">Tutor maieutico</strong>
-        <span class="tm-thinking-badge">Il tutor sta elaborando la domanda socratica...</span>
+        <span class="tm-thinking-badge">Elaborazione in corso...</span>
       </header>
       <details class="tm-reasoning-block" data-testid="tutor-reasoning-details" hidden>
         <summary class="tm-reasoning-summary">Ragionamento in corso...</summary>
@@ -482,20 +514,37 @@ export async function mountWorkspaceUI(
       <div class="tm-gemini-loader" aria-hidden="true">
         <span class="tm-shimmer-bar tm-shimmer-1"></span>
         <span class="tm-shimmer-bar tm-shimmer-2"></span>
-        <span class="tm-shimmer-bar tm-shimmer-3"></span>
+        <span class="tm-shimmer-3 tm-shimmer-bar"></span>
       </div>
       <div class="tm-turn-body" hidden></div>
+      <footer class="tm-turn-actions" hidden>
+        <button
+          type="button"
+          class="tm-turn-action-btn"
+          data-testid="copy-turn-btn"
+          data-tooltip="Copia intervento"
+          aria-label="Copia intervento maieutico"
+        >
+          ${ICONS.copyTurn}
+        </button>
+      </footer>
     `;
+
+    const bodyEl = article.querySelector<HTMLElement>('.tm-turn-body')!;
+    const actionsEl = article.querySelector<HTMLElement>('.tm-turn-actions')!;
+    const copyBtnEl = article.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    bindCopyTurnButton(copyBtnEl, () => bodyEl.textContent ?? '');
 
     return {
       article,
-      avatarEl: article.querySelector<HTMLElement>('.tm-avatar')!,
       badgeEl: article.querySelector<HTMLElement>('.tm-thinking-badge')!,
       reasoningDetailsEl: article.querySelector<HTMLDetailsElement>('[data-testid="tutor-reasoning-details"]')!,
       reasoningSummaryEl: article.querySelector<HTMLElement>('.tm-reasoning-summary')!,
       reasoningBodyEl: article.querySelector<HTMLElement>('.tm-reasoning-body')!,
       loaderEl: article.querySelector<HTMLElement>('.tm-gemini-loader')!,
-      bodyEl: article.querySelector<HTMLElement>('.tm-turn-body')!,
+      bodyEl,
+      actionsEl,
+      copyBtnEl,
     };
   }
 
@@ -514,8 +563,7 @@ export async function mountWorkspaceUI(
     if (snapshot.turns.length === 0) {
       dialogueList.innerHTML = `
         <div class="tm-empty-state">
-          <div class="tm-empty-orb">${ICONS.brandSparkles}</div>
-          <p class="tm-empty-title">Pronto per il dialogo socratico</p>
+          <p class="tm-empty-title">Come posso aiutarti a ragionare oggi?</p>
           <p class="tm-empty-dialogue">
             Inserisci il tuo tentativo e compila il <strong>pre-impegno cognitivo</strong> nella barra laterale per iniziare.
           </p>
@@ -684,8 +732,7 @@ export async function mountWorkspaceUI(
       delete resolvedPendingTutor.article.dataset.pendingTutor;
       resolvedPendingTutor.article.removeAttribute('data-testid');
       resolvedPendingTutor.article.dataset.turnIndex = String(tutorTurnIndex);
-      resolvedPendingTutor.avatarEl.classList.remove('tm-avatar-pulse');
-      resolvedPendingTutor.badgeEl.remove();
+      resolvedPendingTutor.badgeEl.closest('.tm-turn-header')?.remove();
       resolvedPendingTutor.loaderEl.remove();
 
       if (finalTutorTurn.reasoning) {
@@ -698,6 +745,7 @@ export async function mountWorkspaceUI(
 
       resolvedPendingTutor.bodyEl.hidden = false;
       resolvedPendingTutor.bodyEl.textContent = finalTutorTurn.content;
+      resolvedPendingTutor.actionsEl.hidden = false;
     } else {
       renderSnapshot(finalSnap);
     }

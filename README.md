@@ -1,4 +1,4 @@
-# Tutor Maieutico — I.I.S.S. "Marconi-Hack" (Bari)
+# StudIA Tutor Maieutico — I.I.S.S. "Marconi-Hack" (Bari)
 
 **Applicazione web didattica client-side 100% offline e zero-data per l'affiancamento socratico allo studio dell'informatica e della programmazione nei laboratori scolastici.**
 
