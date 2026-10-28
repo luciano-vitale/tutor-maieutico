@@ -109,13 +109,14 @@ describe('WorkspaceUI', () => {
     expect(window.sessionStorage?.length ?? 0).toBe(0);
     expect(document.cookie).toBe('');
 
-    // Clic su "Nuova sessione" distrugge tutto lo stato in RAM
+    // Clic su "Nuova sessione" distrugge tutto lo stato in RAM e riposiziona il focus sul pre-impegno
     const newSessionBtn = root.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
     newSessionBtn.click();
 
     expect(codeInput.value).toBe('');
     expect(errorInput.value).toBe('');
     expect(preCommitmentInput.value).toBe('');
+    expect(document.activeElement).toBe(preCommitmentInput);
     expect(dialogueList.textContent).not.toContain(
       "Quale valore assume l'indice alla fine del ciclo?"
     );
@@ -260,7 +261,7 @@ describe('WorkspaceUI', () => {
     expect(tutorTurnElBefore.querySelector('[data-testid="copy-turn-btn"]')).not.toBeNull();
   });
 
-  test('allinea le 4 icone azione a sinistra sullo stesso livello dell\'ingranaggio a destra e gestisce topbar e pannello di connessione chiusi all\'avvio', async () => {
+  test('razionalizza la UI con StudIA come titolo, Tutor Maieutico come sottotitolo sulla stessa riga, tutte le 5 icone a destra e pannello di connessione verticale', async () => {
     const root = document.getElementById('app')!;
     const engine = new MaieuticSessionEngine(
       new FakeInferencePort(),
@@ -270,12 +271,15 @@ describe('WorkspaceUI', () => {
     await mountWorkspaceUI(root, engine);
 
     const titleEl = root.querySelector<HTMLElement>('.tm-title')!;
-    expect(titleEl.textContent).toBe('StudIA Tutor Maieutico');
+    expect(titleEl.textContent).toBe('StudIA');
     expect(titleEl.querySelector('.tm-brand-i')?.textContent).toBe('I');
     expect(titleEl.querySelector('.tm-brand-a')?.textContent).toBe('A');
 
-    const toolbarLeft = root.querySelector<HTMLElement>('.tm-toolbar-left')!;
-    const toolbarRight = root.querySelector<HTMLElement>('.tm-toolbar-right')!;
+    const subtitleEl = root.querySelector<HTMLElement>('.tm-subtitle')!;
+    expect(subtitleEl.textContent).toContain('Tutor Maieutico');
+    expect(subtitleEl.textContent).toContain('Marconi-Hack');
+
+    const toolbar = root.querySelector<HTMLElement>('.tm-toolbar')!;
     const sidebarBtn = root.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle-btn"]')!;
     const topbarBtn = root.querySelector<HTMLButtonElement>('[data-testid="topbar-toggle-btn"]')!;
     const themeBtn = root.querySelector<HTMLButtonElement>('[data-testid="theme-toggle-btn"]')!;
@@ -284,15 +288,16 @@ describe('WorkspaceUI', () => {
 
     const disclosureBanner = root.querySelector<HTMLElement>('[data-testid="aup-disclosure-banner"]')!;
     const connectionPanel = root.querySelector<HTMLElement>('[data-testid="connection-settings-panel"]')!;
+    const leftSidebar = root.querySelector<HTMLElement>('[data-testid="left-panel-context"]')!;
 
-    // Verifica ordine delle 4 icone a sinistra e icona ingranaggio a destra nella stessa toolbar
-    expect(Array.from(toolbarLeft.children)).toEqual([
+    // Verifica sequenza delle 5 icone raggruppate nella toolbar di destra
+    expect(Array.from(toolbar.children)).toEqual([
       sidebarBtn,
       topbarBtn,
       themeBtn,
       newSessionBtn,
+      connectionBtn,
     ]);
-    expect(Array.from(toolbarRight.children)).toEqual([connectionBtn]);
     expect(connectionBtn.querySelector('svg')).not.toBeNull();
 
     // Topbar Disclosure AUP-IA parte chiusa all'avvio e si apre/chiude al clic
@@ -307,7 +312,8 @@ describe('WorkspaceUI', () => {
     expect(topbarBtn.getAttribute('aria-expanded')).toBe('false');
     expect(disclosureBanner.hidden).toBe(true);
 
-    // Pannello connessione parte chiuso all'avvio e si apre/chiude al clic sull'ingranaggio
+    // Pannello connessione verticale parte chiuso all'avvio nel workspace e si apre/chiude al clic sull'ingranaggio
+    expect(connectionPanel.classList.contains('tm-panel-settings')).toBe(true);
     expect(connectionBtn.getAttribute('aria-expanded')).toBe('false');
     expect(connectionPanel.hidden).toBe(true);
 
@@ -318,6 +324,107 @@ describe('WorkspaceUI', () => {
     connectionBtn.click();
     expect(connectionBtn.getAttribute('aria-expanded')).toBe('false');
     expect(connectionPanel.hidden).toBe(true);
+
+    // Su viewport intermedi (< 1100px), l'apertura del pannello di connessione alterna la chiusura della sidebar sinistra
+    window.innerWidth = 800;
+    sidebarBtn.click();
+    expect(leftSidebar.hidden).toBe(false);
+    expect(sidebarBtn.getAttribute('aria-expanded')).toBe('true');
+
+    connectionBtn.click();
+    expect(connectionPanel.hidden).toBe(false);
+    expect(leftSidebar.hidden).toBe(true);
+    expect(sidebarBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('adotta il layout thinking-first posizionando il pre-impegno cognitivo prima di codice ed errore nel form', async () => {
+    const root = document.getElementById('app')!;
+    const engine = new MaieuticSessionEngine(
+      new FakeInferencePort(),
+      new FakeEnvironmentPort()
+    );
+
+    await mountWorkspaceUI(root, engine);
+
+    const form = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const textareas = Array.from(form.querySelectorAll<HTMLTextAreaElement>('textarea'));
+    expect(textareas.map((t) => t.id)).toEqual([
+      'pre-commitment-input',
+      'student-code-input',
+      'compiler-error-input',
+    ]);
+
+    const firstFormGroup = form.querySelector('.tm-form-group');
+    expect(firstFormGroup?.classList.contains('tm-precommitment-card')).toBe(true);
+    expect(firstFormGroup?.querySelector('#pre-commitment-input')).not.toBeNull();
+  });
+
+  test('trasforma il pulsante di invio in pulsante di stop cliccabile durante l\'elaborazione e interrompe l\'intervento al click', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    inference.streamDelayMs = 40;
+    inference.cannedReply = 'Indizio maieutico importante';
+
+    await mountWorkspaceUI(root, engine);
+
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    preCommitmentInput.value = 'Ho ipotizzato che il ciclo si arresti a 10 ma va in crash.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const requestBtn = root.querySelector<HTMLButtonElement>('[data-testid="request-intervention-btn"]')!;
+    const sendFollowUpBtn = root.querySelector<HTMLButtonElement>('[data-testid="send-followup-btn"]')!;
+    const followUpInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
+
+    // Prima dell'invio: stato idle
+    expect(requestBtn.dataset.busy).toBeUndefined();
+    expect(sendFollowUpBtn.dataset.busy).toBeUndefined();
+    expect(sendFollowUpBtn.getAttribute('aria-label')).toBe('Invia risposta socratica');
+
+    // Invia dal form laterale
+    const attemptForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    // Durante l'elaborazione: entrambi i pulsanti sono abilitati, con data-busy="true" e icona/etichetta di stop
+    expect(requestBtn.disabled).toBe(false);
+    expect(requestBtn.dataset.busy).toBe('true');
+    expect(requestBtn.textContent).toContain('Interrompi elaborazione');
+    expect(requestBtn.getAttribute('data-tooltip')).toBe('Interrompi elaborazione');
+
+    expect(sendFollowUpBtn.disabled).toBe(false);
+    expect(sendFollowUpBtn.dataset.busy).toBe('true');
+    expect(sendFollowUpBtn.getAttribute('aria-label')).toBe('Interrompi elaborazione');
+    expect(sendFollowUpBtn.getAttribute('data-tooltip')).toBe('Interrompi elaborazione');
+
+    // Il tasto Invio nella textarea non fa nulla durante l'elaborazione
+    followUpInput.value = 'Altro testo';
+    const enterEvt = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    followUpInput.dispatchEvent(enterEvt);
+    expect(enterEvt.defaultPrevented).toBe(true);
+
+    // Clicca sul pulsante di stop FAB per interrompere
+    sendFollowUpBtn.click();
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Dopo l'interruzione: i pulsanti tornano allo stato idle
+    expect(requestBtn.dataset.busy).toBe('false');
+    expect(requestBtn.textContent).toContain('Avvia intervento maieutico');
+    expect(sendFollowUpBtn.dataset.busy).toBe('false');
+    expect(sendFollowUpBtn.getAttribute('aria-label')).toBe('Invia risposta socratica');
+
+    // Il dialogo contiene il turno studente e il turno interrotto
+    const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+    const turns = dialogueList.querySelectorAll('.tm-turn');
+    expect(turns.length).toBe(2);
+
+    const tutorTurn = dialogueList.querySelector('.tm-turn-tutor')!;
+    expect(tutorTurn.textContent).toMatch(/Indizio maieutico|\[Intervento interrotto dallo studente\]/);
+
+    // Lo stato di connessione resta online (nessun falso allarme offline)
+    const badge = root.querySelector<HTMLElement>('[data-testid="connection-status-badge"]')!;
+    expect(badge.dataset.status).toBe('online');
   });
 });
 

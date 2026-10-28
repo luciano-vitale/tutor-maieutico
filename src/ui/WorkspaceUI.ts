@@ -17,6 +17,7 @@ const ICONS = {
   copyTurn: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
   checkCopied: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`,
   spinner: `<svg class="tm-spin" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
+  stopSquare: `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>`,
 };
 
 function escapeHtml(raw: string): string {
@@ -79,15 +80,17 @@ export async function mountWorkspaceUI(
           </div>
         </div>
 
-        <div class="tm-brand">
-          <div class="tm-brand-titles">
-            <h1 class="tm-title">Stud<span class="tm-brand-i">I</span><span class="tm-brand-a">A</span> Tutor Maieutico</h1>
-            <span class="tm-subtitle">I.I.S.S. "Marconi-Hack"</span>
+        <div class="tm-navbar">
+          <div class="tm-brand">
+            <h1 class="tm-title">Stud<span class="tm-brand-i">I</span><span class="tm-brand-a">A</span></h1>
+            <span class="tm-subtitle">
+              <span class="tm-subtitle-role">Tutor Maieutico</span>
+              <span class="tm-subtitle-separator"> — </span>
+              <span class="tm-subtitle-school">I.I.S.S. "Marconi-Hack"</span>
+            </span>
           </div>
-        </div>
 
-        <div class="tm-toolbar">
-          <div class="tm-toolbar-left">
+          <div class="tm-toolbar">
             <button
               type="button"
               class="tm-icon-btn tm-sidebar-toggle-btn"
@@ -128,9 +131,6 @@ export async function mountWorkspaceUI(
             >
               ${ICONS.newSessionCompose}
             </button>
-          </div>
-
-          <div class="tm-toolbar-right">
             <button
               type="button"
               class="tm-icon-btn tm-connection-toggle-btn"
@@ -144,52 +144,6 @@ export async function mountWorkspaceUI(
             </button>
           </div>
         </div>
-
-        <div
-          id="connection-settings-panel"
-          class="tm-connection-bar"
-          data-testid="connection-settings-panel"
-          role="region"
-          aria-label="Impostazioni di connessione al motore di inferenza"
-          hidden
-        >
-          <div class="tm-status-pill" data-testid="connection-status-badge" aria-live="polite">
-            <span class="tm-led" aria-hidden="true"></span>
-            <span class="tm-status-text"></span>
-          </div>
-
-          <label for="model-select" class="tm-sr-only">Modello linguistico attivo</label>
-          <select
-            id="model-select"
-            name="activeModel"
-            class="tm-input tm-model-select"
-            data-testid="model-select"
-            aria-label="Modello linguistico attivo"
-            title="Seleziona il modello linguistico caricato in LM Studio"
-          ></select>
-
-          <form id="endpoint-config-form" class="tm-endpoint-form" novalidate>
-            <label for="endpoint-url-input" class="tm-sr-only">Endpoint del motore di inferenza (loopback o LAN RFC 1918)</label>
-            <input
-              type="url"
-              id="endpoint-url-input"
-              name="endpointUrl"
-              class="tm-input tm-endpoint-input"
-              aria-describedby="endpoint-help"
-              placeholder="http://127.0.0.1:1234/v1"
-              required
-            />
-            <span id="endpoint-help" class="tm-sr-only">Accetta solo 127.0.0.1, localhost o IP privati LAN RFC 1918</span>
-            <button
-              type="submit"
-              class="tm-icon-btn"
-              data-tooltip="Connetti o verifica l'endpoint LM Studio"
-              aria-label="Connetti o verifica l'endpoint LM Studio"
-            >
-              ${ICONS.plugConnect}
-            </button>
-          </form>
-        </div>
       </header>
 
       <div
@@ -200,7 +154,7 @@ export async function mountWorkspaceUI(
         hidden
       ></div>
 
-      <main class="tm-workspace" data-sidebar-open="true" role="main">
+      <main class="tm-workspace" data-sidebar-open="true" data-settings-open="false" role="main">
         <aside
           id="left-sidebar-panel"
           class="tm-panel tm-panel-left tm-sidebar"
@@ -216,6 +170,25 @@ export async function mountWorkspaceUI(
           <form id="student-attempt-form" class="tm-form" novalidate>
             <fieldset class="tm-fieldset">
               <legend class="tm-sr-only">Elaborazione autonoma e pre-impegno cognitivo</legend>
+
+              <div class="tm-form-group tm-precommitment-card">
+                <label for="pre-commitment-input" class="tm-label">
+                  ${ICONS.lightbulb}
+                  <span>Pre-impegno cognitivo <span class="tm-required-marker" aria-hidden="true">*</span></span>
+                </label>
+                <p id="pre-commitment-desc" class="tm-field-hint">
+                  Cosa ho provato a fare, qual è la mia ipotesi e dove mi sono bloccato:
+                </p>
+                <textarea
+                  id="pre-commitment-input"
+                  name="cognitivePreCommitment"
+                  class="tm-textarea"
+                  rows="3"
+                  aria-describedby="pre-commitment-desc"
+                  placeholder="Es.: Ho impostato un ciclo for da 0 a N per sommare gli elementi, ma ottengo un valore errato all'ultimo passo..."
+                  required
+                ></textarea>
+              </div>
 
               <div class="tm-form-group">
                 <label for="student-code-input" class="tm-label">
@@ -244,25 +217,6 @@ export async function mountWorkspaceUI(
                   rows="2"
                   spellcheck="false"
                   placeholder="Incolla eventuale output di errore o valore inatteso..."
-                ></textarea>
-              </div>
-
-              <div class="tm-form-group tm-precommitment-card">
-                <label for="pre-commitment-input" class="tm-label">
-                  ${ICONS.lightbulb}
-                  <span>Pre-impegno cognitivo <span class="tm-required-marker" aria-hidden="true">*</span></span>
-                </label>
-                <p id="pre-commitment-desc" class="tm-field-hint">
-                  Cosa ho provato a fare, qual è la mia ipotesi e dove mi sono bloccato:
-                </p>
-                <textarea
-                  id="pre-commitment-input"
-                  name="cognitivePreCommitment"
-                  class="tm-textarea"
-                  rows="3"
-                  aria-describedby="pre-commitment-desc"
-                  placeholder="Es.: Ho impostato un ciclo for da 0 a N per sommare gli elementi, ma ottengo un valore errato all'ultimo passo..."
-                  required
                 ></textarea>
               </div>
 
@@ -325,6 +279,72 @@ export async function mountWorkspaceUI(
             </p>
           </div>
         </section>
+
+        <aside
+          id="connection-settings-panel"
+          class="tm-panel tm-panel-settings tm-sidebar"
+          data-testid="connection-settings-panel"
+          role="region"
+          aria-labelledby="settings-panel-heading"
+          hidden
+        >
+          <div class="tm-panel-header">
+            <h2 id="settings-panel-heading" class="tm-panel-title">
+              Impostazioni di connessione
+            </h2>
+          </div>
+
+          <div class="tm-settings-content">
+            <div class="tm-status-pill" data-testid="connection-status-badge" aria-live="polite">
+              <span class="tm-led" aria-hidden="true"></span>
+              <span class="tm-status-text"></span>
+            </div>
+
+            <div class="tm-form-group">
+              <label for="model-select" class="tm-label">
+                Modello linguistico attivo
+              </label>
+              <select
+                id="model-select"
+                name="activeModel"
+                class="tm-input tm-model-select"
+                data-testid="model-select"
+                aria-label="Modello linguistico attivo"
+                title="Seleziona il modello linguistico caricato in LM Studio"
+              ></select>
+            </div>
+
+            <form id="endpoint-config-form" class="tm-endpoint-form" novalidate>
+              <div class="tm-form-group">
+                <label for="endpoint-url-input" class="tm-label">
+                  Endpoint motore di inferenza
+                </label>
+                <p id="endpoint-help" class="tm-field-hint">
+                  Accetta loopback (127.0.0.1) o IP privati LAN RFC 1918
+                </p>
+                <div class="tm-endpoint-input-wrap">
+                  <input
+                    type="url"
+                    id="endpoint-url-input"
+                    name="endpointUrl"
+                    class="tm-input tm-endpoint-input"
+                    aria-describedby="endpoint-help"
+                    placeholder="http://127.0.0.1:1234/v1"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    class="tm-icon-btn"
+                    data-tooltip="Connetti o verifica l'endpoint LM Studio"
+                    aria-label="Connetti o verifica l'endpoint LM Studio"
+                  >
+                    ${ICONS.plugConnect}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </aside>
       </main>
     </div>
   `;
@@ -378,6 +398,9 @@ export async function mountWorkspaceUI(
     sidebarToggleBtn.setAttribute('aria-expanded', String(open));
     leftSidebar.hidden = !open;
     workspaceEl.dataset.sidebarOpen = String(open);
+    if (open && typeof window !== 'undefined' && window.innerWidth < 1100 && isConnectionPanelOpen) {
+      setConnectionPanelOpen(false);
+    }
   }
 
   sidebarToggleBtn.addEventListener('click', () => {
@@ -398,6 +421,10 @@ export async function mountWorkspaceUI(
     isConnectionPanelOpen = open;
     connectionToggleBtn.setAttribute('aria-expanded', String(open));
     connectionPanel.hidden = !open;
+    workspaceEl.dataset.settingsOpen = String(open);
+    if (open && typeof window !== 'undefined' && window.innerWidth < 1100 && isSidebarOpen) {
+      setSidebarOpen(false);
+    }
   }
 
   connectionToggleBtn.addEventListener('click', () => {
@@ -426,10 +453,39 @@ export async function mountWorkspaceUI(
 
   function setGeneratingState(busy: boolean): void {
     isGenerating = busy;
-    requestBtn.disabled = busy;
-    sendFollowUpBtn.disabled = busy;
+    requestBtn.disabled = false;
+    requestBtn.dataset.busy = busy ? 'true' : 'false';
+    const requestBtnIcon = requestBtn.querySelector<HTMLElement>('.tm-btn-cta-icon');
+    const requestBtnLabel = requestBtn.querySelector<HTMLElement>('.tm-btn-cta-label');
+
+    if (requestBtnIcon && requestBtnLabel) {
+      if (busy) {
+        requestBtnIcon.innerHTML = ICONS.stopSquare;
+        requestBtnLabel.textContent = 'Interrompi elaborazione';
+        requestBtn.setAttribute('data-tooltip', 'Interrompi elaborazione');
+        requestBtn.setAttribute('aria-label', 'Interrompi elaborazione');
+      } else {
+        requestBtnIcon.innerHTML = ICONS.brandSparkles;
+        requestBtnLabel.textContent = 'Avvia intervento maieutico';
+        requestBtn.setAttribute(
+          'data-tooltip',
+          'Invia il tuo codice e il pre-impegno cognitivo al tutor maieutico'
+        );
+        requestBtn.removeAttribute('aria-label');
+      }
+    }
+
+    sendFollowUpBtn.disabled = false;
     sendFollowUpBtn.dataset.busy = busy ? 'true' : 'false';
-    sendFabIcon.innerHTML = busy ? ICONS.spinner : ICONS.sendArrow;
+    if (busy) {
+      sendFabIcon.innerHTML = ICONS.stopSquare;
+      sendFollowUpBtn.setAttribute('data-tooltip', 'Interrompi elaborazione');
+      sendFollowUpBtn.setAttribute('aria-label', 'Interrompi elaborazione');
+    } else {
+      sendFabIcon.innerHTML = ICONS.sendArrow;
+      sendFollowUpBtn.setAttribute('data-tooltip', 'Invia risposta socratica (Invio)');
+      sendFollowUpBtn.setAttribute('aria-label', 'Invia risposta socratica');
+    }
   }
 
   function scrollToLatest(): void {
@@ -738,7 +794,7 @@ export async function mountWorkspaceUI(
 
     const resolvedPendingTutor = pendingTutor ?? activePendingTutor;
 
-    if (result.status !== 'ok') {
+    if (result.status !== 'ok' && result.status !== 'aborted') {
       if (resolvedPendingTutor) {
         resolvedPendingTutor.article.remove();
       }
@@ -797,6 +853,10 @@ export async function mountWorkspaceUI(
 
   attemptForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (isGenerating) {
+      engine.abortCurrentIntervention();
+      return;
+    }
     engine.updateStudentDraft({
       studentCode: codeInput.value,
       compilerError: errorInput.value,
@@ -805,15 +865,28 @@ export async function mountWorkspaceUI(
     await runInterventionRequest(undefined);
   });
 
+  requestBtn.addEventListener('click', (event) => {
+    if (isGenerating) {
+      event.preventDefault();
+      engine.abortCurrentIntervention();
+    }
+  });
+
   followUpInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      followUpForm.requestSubmit();
+      if (!isGenerating) {
+        followUpForm.requestSubmit();
+      }
     }
   });
 
   followUpForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (isGenerating) {
+      engine.abortCurrentIntervention();
+      return;
+    }
     const replyText = followUpInput.value;
     if (replyText.trim().length > 0) {
       followUpInput.value = '';
@@ -821,6 +894,13 @@ export async function mountWorkspaceUI(
     const ok = await runInterventionRequest(replyText);
     if (!ok && replyText.trim().length > 0) {
       followUpInput.value = replyText;
+    }
+  });
+
+  sendFollowUpBtn.addEventListener('click', (event) => {
+    if (isGenerating) {
+      event.preventDefault();
+      engine.abortCurrentIntervention();
     }
   });
 
@@ -832,6 +912,7 @@ export async function mountWorkspaceUI(
     followUpInput.value = '';
     showFeedback(null);
     renderSnapshot(engine.getSnapshot());
+    preCommitmentInput.focus();
   });
 
   const initialSnapshot = await engine.checkInferenceConnection();

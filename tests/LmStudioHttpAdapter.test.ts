@@ -176,6 +176,48 @@ describe('LmStudioHttpAdapter', () => {
     expect(contentTokens).toEqual(['Quale valore ', 'assume i al passo finale?']);
     expect(cleanReply).toBe('Quale valore assume i al passo finale?');
   });
+
+  test('interrompe la ricezione dello streaming SSE quando il segnale di abort viene attivato e restituisce il testo accumulato finora', async () => {
+    const encoder = new TextEncoder();
+    const abortController = new AbortController();
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"Prima parte"}}]}\n\n'));
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        abortController.abort();
+        try {
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":" - Seconda parte"}}]}\n\n'));
+          controller.close();
+        } catch {
+          // Stream già cancellato dall'abort
+        }
+      },
+    });
+
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    );
+
+    const adapter = new LmStudioHttpAdapter('http://127.0.0.1:1234/v1', mockFetch);
+    const receivedTokens: string[] = [];
+
+    const reply = await adapter.completeChat(
+      [{ role: 'user', content: 'Aiutami.' }],
+      {
+        stream: true,
+        signal: abortController.signal,
+        onToken: (tok) => receivedTokens.push(tok),
+      }
+    );
+
+    expect(receivedTokens).toContain('Prima parte');
+    expect(receivedTokens).not.toContain(' - Seconda parte');
+    expect(reply).toBe('Prima parte');
+  });
 });
 
 

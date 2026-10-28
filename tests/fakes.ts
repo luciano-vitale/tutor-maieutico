@@ -14,6 +14,7 @@ export class FakeInferencePort implements InferencePort {
   public cannedReasoning = '';
   public cannedReply = 'Quale variabile controlla la terminazione del ciclo?';
   public lastMessages: ChatMessage[] = [];
+  public streamDelayMs = 0;
 
   getEndpointUrl(): string {
     return this.endpointUrl;
@@ -58,14 +59,30 @@ export class FakeInferencePort implements InferencePort {
       throw new Error('Motore di Inferenza non raggiungibile');
     }
     this.lastMessages = messages;
+    let accumulated = '';
     if (options?.stream) {
+      if (this.streamDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, this.streamDelayMs));
+      }
+      if (options.signal?.aborted) {
+        return accumulated;
+      }
       if (this.cannedReasoning && options.onReasoningToken) {
         options.onReasoningToken(this.cannedReasoning);
       }
       if (options.onToken) {
         for (const word of this.cannedReply.split(' ')) {
-          options.onToken(`${word} `);
+          if (options.signal?.aborted) break;
+          const chunk = `${word} `;
+          accumulated += chunk;
+          options.onToken(chunk);
+          if (this.streamDelayMs > 0) {
+            await new Promise((r) => setTimeout(r, this.streamDelayMs));
+          }
         }
+      }
+      if (options.signal?.aborted) {
+        return accumulated;
       }
     }
     return this.cannedReply;

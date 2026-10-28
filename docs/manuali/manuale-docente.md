@@ -28,7 +28,7 @@
 
 **StudIA Tutor Maieutico** è progettato per operare in totale isolamento dalla rete Internet esterna ([ADR-0001](../adr/0001-stateless-inference-loopback-and-lan.md), [ADR-0004](../adr/0004-offline-static-bundle-and-rubber-duck-fallback.md)):
 
-1. **Client 100% statico e volatile**: l'interfaccia web gira interamente nel browser della singola postazione di laboratorio. Tutti i dati della **sessione maieutica** (tentativi di codice, errori del compilatore, **pre-impegno cognitivo** e cronologia degli **interventi maieutici**) risiedono esclusivamente nella memoria volatile (**RAM**) della scheda del browser e non vengono mai scritti in `localStorage`, `sessionStorage`, `IndexedDB` o cookie (**regime zero-data**, PUIA §4).
+1. **Client 100% statico e volatile**: l'interfaccia web gira interamente nel browser della singola postazione di laboratorio. Tutti i dati della **sessione maieutica** (**pre-impegno cognitivo**, tentativi di codice, errori del compilatore e cronologia degli **interventi maieutici** — disposti secondo il principio *thinking-first* di [ADR-0005](../adr/0005-thinking-first-input-layout-for-cognitive-pre-commitment.md)) risiedono esclusivamente nella memoria volatile (**RAM**) della scheda del browser e non vengono mai scritti in `localStorage`, `sessionStorage`, `IndexedDB` o cookie (**regime zero-data**, PUIA §4).
 2. **Motore di inferenza stateless**: il client comunica via HTTP/SSE con **LM Studio** (o server compatibile OpenAI API) attraverso due sole topologie ammesse dal codice (`LmStudioHttpAdapter`):
    - **Modalità Standalone Loopback** (`http://127.0.0.1:1234/v1` o `http://localhost:1234/v1`): interfaccia web e **motore di inferenza** girano sulla medesima postazione fisica;
    - **Modalità endpoint LAN** (`http://<IP-LAN>:1234/v1` esclusivamente su subnet private RFC 1918: `10.x.x.x`, `172.16.0.0–172.31.255.255`, `192.168.x.x`): le postazioni degli studenti inviano richieste di inferenza stateless a un server GPU dedicato nella rete locale del laboratorio, mantenendo comunque l'intera **sessione maieutica** nella RAM di ciascun client.
@@ -107,7 +107,7 @@ Quando le postazioni degli studenti hanno poca RAM e interrogano un unico server
 
 ### Sulle postazioni client degli studenti
 1. Aprire **StudIA Tutor Maieutico** nel browser della postazione.
-2. Nella barra superiore, sostituire `http://127.0.0.1:1234/v1` con l'indirizzo LAN del server di laboratorio, ad esempio:
+2. Cliccare sull'icona a ingranaggio nella barra superiore per aprire il pannello verticale delle impostazioni di connessione (sul lato destro) e inserire l'indirizzo LAN del server di laboratorio, ad esempio:
    ```text
    http://192.168.1.200:1234/v1
    ```

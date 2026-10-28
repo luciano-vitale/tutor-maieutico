@@ -9,6 +9,7 @@ export interface ChatCompletionOptions {
   model?: string;
   temperature?: number;
   stream?: boolean;
+  signal?: AbortSignal;
   onToken?: (chunk: string) => void;
   onReasoningToken?: (chunk: string) => void;
 }

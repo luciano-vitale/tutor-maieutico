@@ -32,7 +32,7 @@ export interface MaieuticSessionSnapshot extends StudentDraft {
 }
 
 export interface InterventionResult {
-  status: 'ok' | 'rejected_pre_commitment' | 'rejected_empty_reply' | 'inference_error';
+  status: 'ok' | 'rejected_pre_commitment' | 'rejected_empty_reply' | 'inference_error' | 'aborted';
   assistantReply?: string;
   pedagogicalMessage?: string;
 }
@@ -76,6 +76,7 @@ export class MaieuticSessionEngine {
   private connectionStatus: ConnectionStatus = 'idle';
   private availableModels: string[] = [];
   private activeModel: string | null = null;
+  private currentAbortController: AbortController | null = null;
 
   private draft: StudentDraft = emptyDraft();
   private turns: DialogueTurn[] = [];
@@ -139,6 +140,14 @@ export class MaieuticSessionEngine {
     return this.checkInferenceConnection();
   }
 
+  abortCurrentIntervention(): boolean {
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+      return true;
+    }
+    return false;
+  }
+
   async requestMaieuticIntervention(
     studentFollowUp?: string,
     options?: RequestInterventionOptions
@@ -182,21 +191,50 @@ export class MaieuticSessionEngine {
     };
     this.turns.push(studentTurn);
 
+    const abortController = new AbortController();
+    this.currentAbortController = abortController;
+
+    let accumulatedReasoning = '';
+    let accumulatedContent = '';
+
     try {
-      let accumulatedReasoning = '';
       const reply = await this.inferencePort.completeChat(messages, {
         model: this.activeModel ?? undefined,
         stream: options?.stream ?? true,
-        onToken: options?.onToken,
+        signal: abortController.signal,
+        onToken: (chunk) => {
+          accumulatedContent += chunk;
+          options?.onToken?.(chunk);
+        },
         onReasoningToken: (chunk) => {
           accumulatedReasoning += chunk;
           options?.onReasoningToken?.(chunk);
         },
       });
 
+      const effectiveContent = reply || accumulatedContent;
+
+      if (abortController.signal.aborted) {
+        this.connectionStatus = 'online';
+        const hasText = effectiveContent.trim().length > 0;
+        const finalContent = hasText ? effectiveContent : '[Intervento interrotto dallo studente]';
+
+        this.turns.push({
+          role: 'tutor',
+          content: finalContent,
+          ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
+          timestampIso: this.environmentPort.nowIso(),
+        });
+
+        return {
+          status: 'aborted',
+          assistantReply: finalContent,
+        };
+      }
+
       this.turns.push({
         role: 'tutor',
-        content: reply,
+        content: effectiveContent,
         ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
         timestampIso: this.environmentPort.nowIso(),
       });
@@ -204,9 +242,31 @@ export class MaieuticSessionEngine {
 
       return {
         status: 'ok',
-        assistantReply: reply,
+        assistantReply: effectiveContent,
       };
     } catch (err) {
+      const isAborted =
+        abortController.signal.aborted ||
+        (err instanceof Error && err.name === 'AbortError');
+
+      if (isAborted) {
+        this.connectionStatus = 'online';
+        const hasText = accumulatedContent.trim().length > 0;
+        const finalContent = hasText ? accumulatedContent : '[Intervento interrotto dallo studente]';
+
+        this.turns.push({
+          role: 'tutor',
+          content: finalContent,
+          ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
+          timestampIso: this.environmentPort.nowIso(),
+        });
+
+        return {
+          status: 'aborted',
+          assistantReply: finalContent,
+        };
+      }
+
       this.turns.pop();
       this.connectionStatus = 'offline';
       const detail = err instanceof Error ? err.message : 'Errore sconosciuto';
@@ -214,10 +274,15 @@ export class MaieuticSessionEngine {
         status: 'inference_error',
         pedagogicalMessage: `Impossibile raggiungere il motore di inferenza (${detail}). Verifica che LM Studio sia attivo sull'endpoint configurato.`,
       };
+    } finally {
+      if (this.currentAbortController === abortController) {
+        this.currentAbortController = null;
+      }
     }
   }
 
   resetSession(): void {
+    this.abortCurrentIntervention();
     this.draft = emptyDraft();
     this.turns = [];
   }

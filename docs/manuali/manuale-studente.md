@@ -40,14 +40,14 @@ Lo spazio di lavoro è ispirato agli ambienti di sviluppo e alle moderne interfa
 
 - **Pannello 1 (a sinistra) — Contesto e tentativo dello studente**:
   - **Contesto dell'attività**: mostra il linguaggio scelto (`Pseudocodice`, `C/C++`, `Python`, `Java`, `SQL`, `Web`), la traccia dell'esercizio, i vincoli fissati dal docente e il **livello didattico AUP** attivo (`Livello 1`, `2` o `3`);
-  - **Tentativo di codice o pseudocodice**: l'editor in stile IDE dove incolli la bozza di programma o query che hai provato a scrivere;
+  - **Pre-impegno cognitivo** *(obbligatorio)*: dove spieghi con parole tue cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (collocato in prima posizione secondo il principio *thinking-first* per invitarti a riflettere prima ancora di incollare codice);
+  - **Tentativo di codice o pseudocodice**: l'editor in stile IDE dove incolli l'eventuale bozza di programma o query che hai provato a scrivere;
   - **Messaggio di errore del compilatore o interprete**: dove incolli l'eventuale errore restituito dal tuo IDE (opzionale ma utilissimo se il codice non compila);
-  - **Pre-impegno cognitivo** *(obbligatorio)*: dove spieghi con parole tue cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato;
-  - Pulsante **"Avvia intervento maieutico"** (con icona *Fulmine* per attivare o disattivare lo streaming SSE in tempo reale).
+  - Pulsante **"Avvia intervento maieutico"**: invia il contesto al tutor; durante l'elaborazione del prompt si trasforma in **"Interrompi elaborazione"** per consentirti di bloccare la generazione in qualunque momento.
 - **Pannello 2 (a destra) — Dialogo maieutico**:
-  - Mostra la conversazione con il **tutor maieutico**;
+  - Mostra la conversazione con il **tutor maieutico** (perfettamente centrata su qualsiasi risoluzione, anche chiudendo i pannelli laterali);
   - Quando invii un messaggio, vedrai comparire **subito** la tua bolla nella chat e un'**animazione grafica luminosa** che ti indica che il tutor sta elaborando la risposta socratica;
-  - In basso trovi la barra di inserimento con il **pulsante circolare di invio** (puoi anche premere direttamente **`Invio`** sulla tastiera per spedire il messaggio, o `Shift + Invio` per andare a capo).
+  - In basso trovi la barra di inserimento con il **pulsante circolare di invio** (puoi anche premere direttamente **`Invio`** sulla tastiera per spedire il messaggio, o `Shift + Invio` per andare a capo). Durante l'elaborazione del prompt, il pulsante assume l'icona di **stop** (quadratino pieno) per consentirti di arrestare subito la generazione in corso con lo stesso pulsante, preservando il testo maieutico ricevuto fino a quel momento.
 
 ---
 

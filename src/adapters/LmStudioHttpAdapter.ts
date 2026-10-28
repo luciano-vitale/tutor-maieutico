@@ -129,6 +129,7 @@ export class LmStudioHttpAdapter implements InferencePort {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: options.signal,
     });
 
     if (!response.ok) {
@@ -238,19 +239,46 @@ export class LmStudioHttpAdapter implements InferencePort {
       }
     };
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) {
-        buffer += decoder.decode();
-        break;
+    const abortListener = () => {
+      void reader.cancel().catch(() => {});
+    };
+    if (options.signal) {
+      if (options.signal.aborted) {
+        void reader.cancel().catch(() => {});
+      } else {
+        options.signal.addEventListener('abort', abortListener, { once: true });
       }
+    }
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? '';
+    try {
+      while (true) {
+        if (options.signal?.aborted) {
+          break;
+        }
 
-      for (const rawLine of lines) {
-        processLine(rawLine);
+        const { value, done } = await reader.read();
+        if (done) {
+          buffer += decoder.decode();
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? '';
+
+        for (const rawLine of lines) {
+          processLine(rawLine);
+        }
+      }
+    } catch (err: unknown) {
+      if (options.signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+        // Interruzione volontaria da parte dell'utente: ritorna quanto accumulato finora
+      } else {
+        throw err;
+      }
+    } finally {
+      if (options.signal) {
+        options.signal.removeEventListener('abort', abortListener);
       }
     }
 

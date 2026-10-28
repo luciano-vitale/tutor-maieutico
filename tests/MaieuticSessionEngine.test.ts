@@ -132,5 +132,68 @@ describe('MaieuticSessionEngine', () => {
     expect(assistantMsgInHistory?.content).toBe("Qual è l'indice del primo elemento?");
     expect(assistantMsgInHistory?.content).not.toContain('confonde indice');
   });
+
+  test('interrompe l\'intervento in streaming con abortCurrentIntervention preservando i token parziali e mantenendo lo stato online', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    await engine.checkInferenceConnection();
+    expect(engine.getSnapshot().connectionStatus).toBe('online');
+
+    inference.streamDelayMs = 15;
+    inference.cannedReply = 'Prima parola seconda parola terza parola';
+
+    engine.updateStudentDraft({
+      cognitivePreCommitment: 'Ho provato ad eseguire il programma ma il ciclo non termina mai.',
+    });
+
+    const requestPromise = engine.requestMaieuticIntervention();
+    // Aspetta che parta il primo token
+    await new Promise((r) => setTimeout(r, 20));
+
+    const aborted = engine.abortCurrentIntervention();
+    expect(aborted).toBe(true);
+
+    const result = await requestPromise;
+    expect(result.status).toBe('aborted');
+
+    const snap = engine.getSnapshot();
+    expect(snap.connectionStatus).toBe('online');
+    expect(snap.turns).toHaveLength(2);
+    expect(snap.turns[0].role).toBe('student');
+    expect(snap.turns[1].role).toBe('tutor');
+    expect(snap.turns[1].content).toContain('Prima');
+    expect(snap.turns[1].content).not.toContain('terza parola');
+  });
+
+  test('interrompe l\'intervento prima della ricezione di token inserendo l\'avviso [Intervento interrotto dallo studente] e mantenendo lo stato online', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    await engine.checkInferenceConnection();
+    expect(engine.getSnapshot().connectionStatus).toBe('online');
+
+    inference.streamDelayMs = 50;
+
+    engine.updateStudentDraft({
+      cognitivePreCommitment: 'Ho provato ad eseguire il programma ma il ciclo non termina mai.',
+    });
+
+    const requestPromise = engine.requestMaieuticIntervention();
+    // Interrompe immediatamente prima del delay iniziale
+    engine.abortCurrentIntervention();
+
+    const result = await requestPromise;
+    expect(result.status).toBe('aborted');
+    expect(result.assistantReply).toBe('[Intervento interrotto dallo studente]');
+
+    const snap = engine.getSnapshot();
+    expect(snap.connectionStatus).toBe('online');
+    expect(snap.turns).toHaveLength(2);
+    expect(snap.turns[1].role).toBe('tutor');
+    expect(snap.turns[1].content).toBe('[Intervento interrotto dallo studente]');
+  });
 });
 
