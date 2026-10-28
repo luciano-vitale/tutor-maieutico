@@ -50,9 +50,10 @@ const MAIEUTIC_SYSTEM_PROMPT = `Sei StudIA Tutor Maieutico dei laboratori di inf
 Opera nel rigoroso rispetto dell'invariante di non-sostituzione (AUP-IA §1, art. 25 L. 132/2025):
 - Non fornire mai la soluzione completa o il codice risolutivo pronto all'uso.
 - Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo pre-impegno cognitivo.
+- Se lo studente formula direttamente un dubbio concettuale o algoritmico nella chat senza aver allegato codice o errori nel pannello laterale, rispondi maieuticamente sul suo modello concettuale e invitalo socraticamente, qualora utile all'indagine, a condividere il frammento di codice o l'errore del compilatore nel pannello di contesto.
 - Non esprimere mai voti, giudizi valutativi o profilazioni dello studente (CU-16..19 esclusi).`;
 
-function isMeaningfulPreCommitment(text: string): boolean {
+export function isMeaningfulPreCommitment(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length < MIN_PRE_COMMITMENT_CHARS) {
     return false;
@@ -152,16 +153,56 @@ export class MaieuticSessionEngine {
     studentFollowUp?: string,
     options?: RequestInterventionOptions
   ): Promise<InterventionResult> {
-    if (!isMeaningfulPreCommitment(this.draft.cognitivePreCommitment)) {
-      return {
-        status: 'rejected_pre_commitment',
-        pedagogicalMessage:
-          'Pre-impegno cognitivo obbligatorio (AUP-IA §1): prima di richiedere un intervento maieutico, descrivi cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (almeno una frase completa).',
-      };
-    }
-
     const isFollowUpReply = studentFollowUp !== undefined;
     const followUpTrimmed = studentFollowUp?.trim() ?? '';
+
+    // Se l'invio avviene dalla barra di chat e il pre-impegno nel pannello laterale non è ancora valido:
+    // valuta se il testo digitato nella chat è sufficiente per fungere da pre-impegno cognitivo
+    if (isFollowUpReply && !isMeaningfulPreCommitment(this.draft.cognitivePreCommitment)) {
+      if (isMeaningfulPreCommitment(followUpTrimmed)) {
+        this.draft.cognitivePreCommitment = followUpTrimmed;
+      }
+    }
+
+    if (!isMeaningfulPreCommitment(this.draft.cognitivePreCommitment)) {
+      const studentTurnContent = isFollowUpReply
+        ? (followUpTrimmed.length > 0 ? followUpTrimmed : 'Richiesta di intervento maieutico.')
+        : (this.draft.cognitivePreCommitment.trim().length > 0
+            ? this.buildDraftPrompt()
+            : (this.draft.studentCode.trim().length > 0
+                ? this.buildDraftPrompt()
+                : 'Richiesta di intervento maieutico.'));
+
+      const pedagogicalMessage =
+        'Pre-impegno cognitivo obbligatorio (AUP-IA §1): prima di richiedere un intervento maieutico, descrivi cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (almeno una frase completa).';
+
+      const lastStudentTurn = this.turns[this.turns.length - 2];
+      const lastTutorTurn = this.turns[this.turns.length - 1];
+      const isDuplicateAttempt =
+        lastTutorTurn &&
+        lastTutorTurn.content === pedagogicalMessage &&
+        lastStudentTurn &&
+        lastStudentTurn.content === studentTurnContent;
+
+      if (!isDuplicateAttempt) {
+        this.turns.push({
+          role: 'student',
+          content: studentTurnContent,
+          timestampIso: this.environmentPort.nowIso(),
+        });
+        this.turns.push({
+          role: 'tutor',
+          content: pedagogicalMessage,
+          timestampIso: this.environmentPort.nowIso(),
+        });
+      }
+
+      return {
+        status: 'rejected_pre_commitment',
+        pedagogicalMessage,
+        assistantReply: pedagogicalMessage,
+      };
+    }
 
     if (isFollowUpReply && followUpTrimmed.length === 0) {
       return {

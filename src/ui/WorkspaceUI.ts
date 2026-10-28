@@ -1,4 +1,8 @@
-import type { MaieuticSessionEngine, MaieuticSessionSnapshot } from '../domain/MaieuticSessionEngine';
+import {
+  type MaieuticSessionEngine,
+  type MaieuticSessionSnapshot,
+  isMeaningfulPreCommitment,
+} from '../domain/MaieuticSessionEngine';
 
 const ICONS = {
   brandSparkles: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg>`,
@@ -329,6 +333,29 @@ export async function mountWorkspaceUI(
                 </div>
               </div>
             </form>
+
+            <div class="tm-form-group tm-dev-mode-group">
+              <label
+                for="dev-mode-toggle"
+                class="tm-switch-label"
+                data-tooltip="Mostra e preserva il ragionamento completo del modello anziché la vista protetta a scomparsa."
+                title="Mostra e preserva il ragionamento completo del modello anziché la vista protetta a scomparsa."
+              >
+                <span class="tm-switch-text">Modalità sviluppatore (ispezione ragionamento)</span>
+                <span class="tm-switch-control">
+                  <input
+                    type="checkbox"
+                    id="dev-mode-toggle"
+                    class="tm-switch-input"
+                    role="switch"
+                    data-testid="dev-mode-toggle"
+                  />
+                  <span class="tm-switch-track" aria-hidden="true">
+                    <span class="tm-switch-thumb"></span>
+                  </span>
+                </span>
+              </label>
+            </div>
           </div>
         </aside>
       </main>
@@ -383,6 +410,7 @@ export async function mountWorkspaceUI(
   const modelSelect = container.querySelector<HTMLSelectElement>('#model-select')!;
   const endpointForm = container.querySelector<HTMLFormElement>('#endpoint-config-form')!;
   const endpointInput = container.querySelector<HTMLInputElement>('#endpoint-url-input')!;
+  const devModeToggle = container.querySelector<HTMLInputElement>('#dev-mode-toggle')!;
   const newSessionBtn = container.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
   const feedbackBanner = container.querySelector<HTMLElement>('[data-testid="pedagogical-feedback"]')!;
 
@@ -399,6 +427,14 @@ export async function mountWorkspaceUI(
   const sendFabIcon = sendFollowUpBtn.querySelector<HTMLElement>('.tm-send-fab-icon')!;
 
   let isGenerating = false;
+  let isDevMode = false;
+
+  const updateDevMode = (): void => {
+    isDevMode = devModeToggle.checked;
+    renderSnapshot(engine.getSnapshot());
+  };
+  devModeToggle.addEventListener('change', updateDevMode);
+  devModeToggle.addEventListener('click', updateDevMode);
 
   function setSidebarOpen(open: boolean): void {
     isSidebarOpen = open;
@@ -458,29 +494,44 @@ export async function mountWorkspaceUI(
     feedbackBanner.textContent = message;
   }
 
-  function setGeneratingState(busy: boolean): void {
-    isGenerating = busy;
-    requestBtn.disabled = false;
-    requestBtn.dataset.busy = busy ? 'true' : 'false';
+  function updateRequestButtonState(busy: boolean, snapshot = engine.getSnapshot()): void {
     const requestBtnIcon = requestBtn.querySelector<HTMLElement>('.tm-btn-cta-icon');
     const requestBtnLabel = requestBtn.querySelector<HTMLElement>('.tm-btn-cta-label');
 
-    if (requestBtnIcon && requestBtnLabel) {
-      if (busy) {
-        requestBtnIcon.innerHTML = ICONS.stopSquare;
-        requestBtnLabel.textContent = 'Interrompi elaborazione';
-        requestBtn.setAttribute('data-tooltip', 'Interrompi elaborazione');
-        requestBtn.setAttribute('aria-label', 'Interrompi elaborazione');
+    if (!requestBtnIcon || !requestBtnLabel) return;
+
+    if (busy) {
+      requestBtnIcon.innerHTML = ICONS.stopSquare;
+      requestBtnLabel.textContent = 'Interrompi elaborazione';
+      requestBtn.setAttribute('data-tooltip', 'Interrompi elaborazione');
+      requestBtn.setAttribute('aria-label', 'Interrompi elaborazione');
+    } else {
+      requestBtnIcon.innerHTML = ICONS.brandSparkles;
+      const hasActiveIntervention = snapshot.turns.some(
+        (t) => t.role === 'tutor' && !t.content.startsWith('Pre-impegno cognitivo obbligatorio')
+      );
+      if (hasActiveIntervention) {
+        requestBtnLabel.textContent = 'Invia tentativo aggiornato';
+        requestBtn.setAttribute(
+          'data-tooltip',
+          'Invia il codice o il tentativo aggiornato al tutor maieutico'
+        );
       } else {
-        requestBtnIcon.innerHTML = ICONS.brandSparkles;
         requestBtnLabel.textContent = 'Avvia intervento maieutico';
         requestBtn.setAttribute(
           'data-tooltip',
           'Invia il tuo codice e il pre-impegno cognitivo al tutor maieutico'
         );
-        requestBtn.removeAttribute('aria-label');
       }
+      requestBtn.removeAttribute('aria-label');
     }
+  }
+
+  function setGeneratingState(busy: boolean): void {
+    isGenerating = busy;
+    requestBtn.disabled = false;
+    requestBtn.dataset.busy = busy ? 'true' : 'false';
+    updateRequestButtonState(busy);
 
     sendFollowUpBtn.disabled = false;
     sendFollowUpBtn.dataset.busy = busy ? 'true' : 'false';
@@ -567,7 +618,7 @@ export async function mountWorkspaceUI(
       return article;
     }
 
-    const reasoningBlock = turn.reasoning
+    const reasoningBlock = (isDevMode && turn.reasoning)
       ? `<details class="tm-reasoning-block" data-testid="tutor-reasoning-details">
            <summary class="tm-reasoning-summary">Ragionamento del modello</summary>
            <div class="tm-reasoning-body">${escapeHtml(turn.reasoning)}</div>
@@ -598,7 +649,9 @@ export async function mountWorkspaceUI(
 
   function createPendingTutorElement(): {
     article: HTMLElement;
-    badgeEl: HTMLElement;
+    reasoningEphemeralBox: HTMLElement;
+    reasoning3LinesViewport: HTMLElement;
+    reasoning3LinesBodyEl: HTMLElement;
     reasoningDetailsEl: HTMLDetailsElement;
     reasoningSummaryEl: HTMLElement;
     reasoningBodyEl: HTMLElement;
@@ -612,9 +665,14 @@ export async function mountWorkspaceUI(
     article.dataset.pendingTutor = 'true';
     article.dataset.testid = 'tutor-thinking-indicator';
     article.innerHTML = `
-      <header class="tm-turn-header">
-        <span class="tm-thinking-badge">Elaborazione in corso...</span>
-      </header>
+      <div class="tm-reasoning-ephemeral-box" data-testid="tutor-reasoning-ephemeral" hidden>
+        <div class="tm-reasoning-ephemeral-header">
+          <span class="tm-reasoning-summary">Ragionamento in corso...</span>
+        </div>
+        <div class="tm-reasoning-3lines-viewport" data-testid="tutor-reasoning-scroll-box">
+          <div class="tm-reasoning-3lines-content"></div>
+        </div>
+      </div>
       <details class="tm-reasoning-block" data-testid="tutor-reasoning-details" hidden>
         <summary class="tm-reasoning-summary">Ragionamento in corso...</summary>
         <div class="tm-reasoning-body"></div>
@@ -645,10 +703,12 @@ export async function mountWorkspaceUI(
 
     return {
       article,
-      badgeEl: article.querySelector<HTMLElement>('.tm-thinking-badge')!,
+      reasoningEphemeralBox: article.querySelector<HTMLElement>('[data-testid="tutor-reasoning-ephemeral"]')!,
+      reasoning3LinesViewport: article.querySelector<HTMLElement>('[data-testid="tutor-reasoning-scroll-box"]')!,
+      reasoning3LinesBodyEl: article.querySelector<HTMLElement>('.tm-reasoning-3lines-content')!,
       reasoningDetailsEl: article.querySelector<HTMLDetailsElement>('[data-testid="tutor-reasoning-details"]')!,
-      reasoningSummaryEl: article.querySelector<HTMLElement>('.tm-reasoning-summary')!,
-      reasoningBodyEl: article.querySelector<HTMLElement>('.tm-reasoning-body')!,
+      reasoningSummaryEl: article.querySelector<HTMLElement>('.tm-reasoning-block .tm-reasoning-summary')!,
+      reasoningBodyEl: article.querySelector<HTMLElement>('.tm-reasoning-block .tm-reasoning-body')!,
       loaderEl: article.querySelector<HTMLElement>('.tm-gemini-loader')!,
       bodyEl,
       actionsEl,
@@ -662,11 +722,13 @@ export async function mountWorkspaceUI(
 
   function collapseReasoningBlock(tutorEl: ReturnType<typeof createPendingTutorElement>): void {
     tutorEl.reasoningDetailsEl.open = false;
+    tutorEl.reasoningDetailsEl.removeAttribute('open');
     tutorEl.reasoningSummaryEl.textContent = 'Ragionamento del modello';
   }
 
   function renderSnapshot(snapshot: MaieuticSessionSnapshot): void {
     renderHeaderState(snapshot);
+    updateRequestButtonState(isGenerating, snapshot);
 
     if (snapshot.turns.length === 0) {
       dialogueList.innerHTML = `
@@ -759,15 +821,19 @@ export async function mountWorkspaceUI(
       onReasoningToken: (chunk) => {
         const tutorEl = ensureInitialPendingDOM();
         if (!tutorEl) return;
-        const wasHidden = tutorEl.reasoningDetailsEl.hidden;
         reasoningAccum += chunk;
         tutorEl.loaderEl.hidden = true;
-        tutorEl.reasoningDetailsEl.hidden = false;
-        if (wasHidden && streamAccum.length === 0) {
+        if (isDevMode) {
+          tutorEl.reasoningDetailsEl.hidden = false;
           tutorEl.reasoningDetailsEl.open = true;
+          tutorEl.reasoningDetailsEl.setAttribute('open', '');
           tutorEl.reasoningSummaryEl.textContent = 'Ragionamento in corso...';
+          tutorEl.reasoningBodyEl.textContent = reasoningAccum;
+        } else {
+          tutorEl.reasoningEphemeralBox.hidden = false;
+          tutorEl.reasoning3LinesBodyEl.textContent = reasoningAccum;
+          tutorEl.reasoning3LinesViewport.scrollTop = tutorEl.reasoning3LinesViewport.scrollHeight;
         }
-        tutorEl.reasoningBodyEl.textContent = reasoningAccum;
         scrollToLatest();
       },
       onToken: (token) => {
@@ -777,8 +843,8 @@ export async function mountWorkspaceUI(
         tutorEl.loaderEl.hidden = true;
         tutorEl.article.classList.remove('tm-turn-thinking');
         tutorEl.article.classList.add('tm-turn-streaming');
-        tutorEl.badgeEl.textContent = 'Risposta in corso...';
-        if (!tutorEl.reasoningDetailsEl.hidden) {
+        tutorEl.reasoningEphemeralBox.hidden = true;
+        if (isDevMode && !tutorEl.reasoningDetailsEl.hidden) {
           collapseReasoningBlock(tutorEl);
         }
         tutorEl.bodyEl.hidden = false;
@@ -817,15 +883,29 @@ export async function mountWorkspaceUI(
           el.remove();
         }
       });
-      if (finalSnap.turns.length === 0) {
-        renderSnapshot(finalSnap);
-      }
 
       if (result.status === 'rejected_pre_commitment') {
+        renderSnapshot(finalSnap);
         if (!isSidebarOpen) {
           setSidebarOpen(true);
         }
+        if (
+          studentFollowUp &&
+          studentFollowUp.trim().length > 0 &&
+          preCommitmentInput.value.trim().length === 0
+        ) {
+          preCommitmentInput.value = studentFollowUp.trim();
+          engine.updateStudentDraft({ cognitivePreCommitment: studentFollowUp.trim() });
+        }
         preCommitmentInput.focus();
+        const len = preCommitmentInput.value.length;
+        preCommitmentInput.setSelectionRange(len, len);
+        scrollToLatest();
+        return false;
+      }
+
+      if (finalSnap.turns.length === 0) {
+        renderSnapshot(finalSnap);
       }
 
       showFeedback(result.pedagogicalMessage ?? 'Impossibile completare la richiesta.');
@@ -840,10 +920,10 @@ export async function mountWorkspaceUI(
       delete resolvedPendingTutor.article.dataset.pendingTutor;
       resolvedPendingTutor.article.removeAttribute('data-testid');
       resolvedPendingTutor.article.dataset.turnIndex = String(tutorTurnIndex);
-      resolvedPendingTutor.badgeEl.closest('.tm-turn-header')?.remove();
       resolvedPendingTutor.loaderEl.remove();
+      resolvedPendingTutor.reasoningEphemeralBox.remove();
 
-      if (finalTutorTurn.reasoning) {
+      if (finalTutorTurn.reasoning && isDevMode) {
         resolvedPendingTutor.reasoningDetailsEl.hidden = false;
         collapseReasoningBlock(resolvedPendingTutor);
         resolvedPendingTutor.reasoningBodyEl.textContent = finalTutorTurn.reasoning;
@@ -899,13 +979,17 @@ export async function mountWorkspaceUI(
       return;
     }
     const replyText = followUpInput.value;
-    if (replyText.trim().length > 0) {
-      followUpInput.value = '';
+    if (replyText.trim().length === 0) {
+      return;
     }
-    const ok = await runInterventionRequest(replyText);
-    if (!ok && replyText.trim().length > 0) {
-      followUpInput.value = replyText;
+    followUpInput.value = '';
+    if (
+      isMeaningfulPreCommitment(replyText) &&
+      !isMeaningfulPreCommitment(preCommitmentInput.value)
+    ) {
+      preCommitmentInput.value = replyText.trim();
     }
+    await runInterventionRequest(replyText);
   });
 
   sendFollowUpBtn.addEventListener('click', (event) => {

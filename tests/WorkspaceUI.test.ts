@@ -73,12 +73,15 @@ describe('WorkspaceUI', () => {
     errorInput.value = 'Floating point exception';
     errorInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-    // Tentativo senza pre-impegno cognitivo
+    // Tentativo senza pre-impegno cognitivo: risposta immediata direttamente in chat dal tutor, nessun avviso banner
     contextForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await Promise.resolve();
 
+    const dialogueList = root.querySelector('[data-testid="dialogue-turns-list"]')!;
+    expect(dialogueList.textContent).toMatch(/pre-impegno cognitivo obbligatorio/i);
     const alertBox = root.querySelector('[data-testid="pedagogical-feedback"]');
-    expect(alertBox?.textContent).toMatch(/pre-impegno cognitivo/i);
+    expect(alertBox?.textContent ?? '').toBe('');
+    expect(document.activeElement).toBe(preCommitmentInput);
 
     // Compilazione pre-impegno cognitivo e invio
     preCommitmentInput.value =
@@ -88,7 +91,6 @@ describe('WorkspaceUI', () => {
     contextForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 
     // Verifica feedback immediato di invio (Optimistic UI) e animazione di elaborazione stile Gemini
-    const dialogueList = root.querySelector('[data-testid="dialogue-turns-list"]')!;
     expect(dialogueList.textContent).toContain('int x = 10 / 0;');
     expect(root.querySelector('[data-testid="message-sent-indicator"]')?.textContent).toBe(
       'Inviato'
@@ -194,16 +196,18 @@ describe('WorkspaceUI', () => {
     expect(sidebarBtn.getAttribute('aria-expanded')).toBe('false');
     expect(leftSidebar.hidden).toBe(true);
 
-    // Tentativo di invio dal composer mentre la sidebar è chiusa e il pre-impegno cognitivo è vuoto
+    // Tentativo di invio dal composer mentre la sidebar è chiusa e il pre-impegno cognitivo è insufficiente (< 15 caratteri / < 3 parole)
     const followUpInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
     const followUpForm = root.querySelector<HTMLFormElement>('#socratic-followup-form')!;
-    followUpInput.value = 'Non capisco perché non funziona';
+    followUpInput.value = 'non va';
     followUpForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await Promise.resolve();
 
     expect(sidebarBtn.getAttribute('aria-expanded')).toBe('true');
     expect(leftSidebar.hidden).toBe(false);
     expect(document.activeElement).toBe(preCommitmentInput);
+    expect(preCommitmentInput.value).toBe('non va');
+    expect(followUpInput.value).toBe('');
 
     // 3. Selettore tema chiaro/scuro esclusivamente in RAM (tema chiaro predefinito all'avvio)
     const themeBtn = root.querySelector<HTMLButtonElement>('[data-testid="theme-toggle-btn"]')!;
@@ -227,37 +231,45 @@ describe('WorkspaceUI', () => {
 
     const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
     const studentTurnElBefore = dialogueList.querySelector('.tm-turn-student')!;
-    const tutorTurnElBefore = dialogueList.querySelector('.tm-turn-tutor')!;
+    const tutorTurnElBefore = dialogueList.querySelector<HTMLElement>('[data-pending-tutor="true"]')!;
     expect(studentTurnElBefore).not.toBeNull();
     expect(tutorTurnElBefore).not.toBeNull();
 
-    // Arrivo del primo token di ragionamento: blocco <details> aperto
+    // Arrivo del primo token di ragionamento in modalità standard: riquadro compatto a 3 righe con scorrimento
     streamCallbacks.onReasoningToken?.('Controllo i limiti dell\'array...');
-    const reasoningDetails = tutorTurnElBefore.querySelector<HTMLDetailsElement>(
-      '[data-testid="tutor-reasoning-details"]'
+    const ephemeralBox = tutorTurnElBefore.querySelector<HTMLElement>(
+      '[data-testid="tutor-reasoning-ephemeral"]'
     )!;
-    expect(reasoningDetails).not.toBeNull();
-    expect(reasoningDetails.open).toBe(true);
-    expect(reasoningDetails.textContent).toContain("Controllo i limiti dell'array...");
+    expect(ephemeralBox).not.toBeNull();
+    expect(ephemeralBox.hidden).toBe(false);
+    const scrollBox = tutorTurnElBefore.querySelector<HTMLElement>(
+      '[data-testid="tutor-reasoning-scroll-box"]'
+    )!;
+    expect(scrollBox.textContent).toContain("Controllo i limiti dell'array...");
 
-    // Arrivo dei token della risposta maieutica: il blocco <details> si collassa e i nodi DOM NON vengono ricreati
+    // Arrivo dei token della risposta maieutica: il riquadro di ragionamento viene nascosto e i nodi DOM NON vengono ricreati
     streamCallbacks.onToken?.('Qual è ');
-    expect(reasoningDetails.open).toBe(false);
+    expect(ephemeralBox.hidden).toBe(true);
     expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
-    expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
+    const tutorTurns1 = dialogueList.querySelectorAll('.tm-turn-tutor');
+    expect(tutorTurns1[tutorTurns1.length - 1]).toBe(tutorTurnElBefore);
 
     streamCallbacks.onToken?.("l'ultimo indice valido?");
     expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
-    expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
+    const tutorTurns2 = dialogueList.querySelectorAll('.tm-turn-tutor');
+    expect(tutorTurns2[tutorTurns2.length - 1]).toBe(tutorTurnElBefore);
     expect(tutorTurnElBefore.querySelector('.tm-stream-cursor')).toBeNull();
 
-    // Fine stream: il nodo del tutor resta lo stesso identico elemento DOM (zero animazione fade-in ripetuta)
+    // Fine stream: il riquadro di ragionamento viene rimosso dal DOM (studente protetto da spoiler), nessun fade-in ripetuto
     resolveChat("Qual è l'ultimo indice valido?");
     await new Promise((r) => setTimeout(r, 10));
 
     expect(dialogueList.querySelector('.tm-turn-student')).toBe(studentTurnElBefore);
-    expect(dialogueList.querySelector('.tm-turn-tutor')).toBe(tutorTurnElBefore);
+    const tutorTurns3 = dialogueList.querySelectorAll('.tm-turn-tutor');
+    expect(tutorTurns3[tutorTurns3.length - 1]).toBe(tutorTurnElBefore);
     expect(tutorTurnElBefore.textContent).toContain("Qual è l'ultimo indice valido?");
+    expect(tutorTurnElBefore.querySelector('[data-testid="tutor-reasoning-ephemeral"]')).toBeNull();
+    expect(tutorTurnElBefore.querySelector('[data-testid="tutor-reasoning-details"]')).toBeNull();
     expect(studentTurnElBefore.querySelector('.tm-turn-author')).toBeNull();
     expect(tutorTurnElBefore.querySelector('[data-testid="copy-turn-btn"]')).not.toBeNull();
   });
@@ -429,9 +441,10 @@ describe('WorkspaceUI', () => {
     sendFollowUpBtn.click();
     await new Promise((r) => setTimeout(r, 60));
 
-    // Dopo l'interruzione: i pulsanti tornano allo stato idle
+    // Dopo l'interruzione: i pulsanti tornano allo stato idle con etichetta dinamica per tentativo aggiornato
     expect(requestBtn.dataset.busy).toBe('false');
-    expect(requestBtn.textContent).toContain('Avvia intervento maieutico');
+    expect(requestBtn.textContent).toContain('Invia tentativo aggiornato');
+    expect(requestBtn.getAttribute('data-tooltip')).toBe('Invia il codice o il tentativo aggiornato al tutor maieutico');
     expect(sendFollowUpBtn.dataset.busy).toBe('false');
     expect(sendFollowUpBtn.getAttribute('aria-label')).toBe('Invia risposta socratica');
 
@@ -446,6 +459,161 @@ describe('WorkspaceUI', () => {
     // Lo stato di connessione resta online (nessun falso allarme offline)
     const badge = root.querySelector<HTMLElement>('[data-testid="connection-status-badge"]')!;
     expect(badge.dataset.status).toBe('online');
+  });
+
+  test('abilita la modalità sviluppatore dal pannello impostazioni per visualizzare e preservare il ragionamento completo', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+
+    let streamCallbacks: {
+      onToken?: (chunk: string) => void;
+      onReasoningToken?: (chunk: string) => void;
+    } = {};
+    let resolveChat!: (value: string) => void;
+
+    inference.completeChat = vi.fn().mockImplementation((_messages, opts) => {
+      streamCallbacks = opts ?? {};
+      return new Promise<string>((resolve) => {
+        resolveChat = resolve;
+      });
+    });
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const devModeToggle = root.querySelector<HTMLInputElement>('[data-testid="dev-mode-toggle"]')!;
+    expect(devModeToggle).not.toBeNull();
+    expect(devModeToggle.checked).toBe(false);
+    expect(devModeToggle.getAttribute('role')).toBe('switch');
+
+    const switchLabel = root.querySelector('.tm-switch-label')!;
+    expect(switchLabel).not.toBeNull();
+    expect(switchLabel.getAttribute('data-tooltip')).toContain('ragionamento completo del modello');
+    expect(root.querySelector('.tm-dev-mode-group .tm-field-hint')).toBeNull();
+
+    // Abilita modalità sviluppatore
+    devModeToggle.checked = true;
+    devModeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(devModeToggle.checked).toBe(true);
+
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    preCommitmentInput.value = 'Ho ipotizzato che il passo del ciclo debba essere 1 anziché 2.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const attemptForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+    const tutorTurn = dialogueList.querySelector('.tm-turn-tutor')!;
+
+    // In modalità sviluppatore il blocco reasoning è il details espandibile
+    streamCallbacks.onReasoningToken?.('Analisi del contatore...');
+    const reasoningDetails = tutorTurn.querySelector<HTMLDetailsElement>('[data-testid="tutor-reasoning-details"]')!;
+    expect(reasoningDetails).not.toBeNull();
+    expect(reasoningDetails.open).toBe(true);
+    expect(reasoningDetails.textContent).toContain('Analisi del contatore...');
+
+    // Arrivo token risposta: details si collassa
+    streamCallbacks.onToken?.('Perché pensi che il passo sia 2?');
+    expect(reasoningDetails.open).toBe(false);
+
+    // Fine inferenza: in dev mode il blocco reasoning RESTA nel DOM consultabile
+    resolveChat('Perché pensi che il passo sia 2?');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const finalReasoningDetails = tutorTurn.querySelector<HTMLDetailsElement>('[data-testid="tutor-reasoning-details"]')!;
+    expect(finalReasoningDetails).not.toBeNull();
+    expect(finalReasoningDetails.textContent).toContain('Analisi del contatore...');
+  });
+
+  test('avvia la sessione maieutica direttamente dalla chat se il prompt contiene un pre-impegno valido, oppure trasferisce il testo e richiede completamento se insufficiente', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    let resolveChat!: (value: string) => void;
+    inference.completeChat = vi.fn().mockImplementation(() => {
+      return new Promise<string>((resolve) => {
+        resolveChat = resolve;
+      });
+    });
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const followUpInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
+    const followUpForm = root.querySelector<HTMLFormElement>('#socratic-followup-form')!;
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+
+    // 1. Invio di testo non sufficiente dalla barra di chat in basso
+    followUpInput.value = 'non compila';
+    followUpForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    // Il testo in basso viene ripulito e non ripristinato
+    expect(followUpInput.value).toBe('');
+    // La chat mostra il turno studente con "non compila" e la risposta del tutor
+    const turns = dialogueList.querySelectorAll('.tm-turn');
+    expect(turns.length).toBe(2);
+    expect(turns[0].textContent).toContain('non compila');
+    expect(turns[1].textContent).toMatch(/pre-impegno cognitivo obbligatorio/i);
+    // Il testo viene pre-caricato nella casella di pre-impegno laterale
+    expect(preCommitmentInput.value).toBe('non compila');
+    expect(document.activeElement).toBe(preCommitmentInput);
+
+    // 2. Invio di un pre-impegno significativo direttamente dalla chat in basso
+    followUpInput.value = 'Sto cercando di calcolare la media degli elementi di un vettore ma ottengo zero.';
+    followUpForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    // La casella viene subito ripulita
+    expect(followUpInput.value).toBe('');
+    // Il pre-impegno laterale viene sincronizzato
+    expect(preCommitmentInput.value).toContain('media degli elementi');
+    // L'inferenza parte direttamente!
+    expect(root.querySelector('[data-testid="tutor-thinking-indicator"]')).not.toBeNull();
+
+    resolveChat('Qual è il tipo della variabile in cui accumuli la somma?');
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(dialogueList.textContent).toContain('Qual è il tipo della variabile in cui accumuli la somma?');
+  });
+
+  test('aggiorna dinamicamente l\'etichetta e il tooltip del pulsante laterale tra avvio, tentativo aggiornato e nuova sessione', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    inference.cannedReply = 'Cosa succede se stampi il valore intermedio dell\'indice?';
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const requestBtn = root.querySelector<HTMLButtonElement>('[data-testid="request-intervention-btn"]')!;
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const attemptForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const newSessionBtn = root.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
+
+    // 1. Stato iniziale a turno zero
+    expect(requestBtn.textContent).toContain('Avvia intervento maieutico');
+    expect(requestBtn.getAttribute('data-tooltip')).toBe('Invia il tuo codice e il pre-impegno cognitivo al tutor maieutico');
+
+    // 2. Invio con pre-impegno insufficiente: la richiesta viene respinta e il pulsante resta "Avvia intervento maieutico"
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    expect(requestBtn.textContent).toContain('Avvia intervento maieutico');
+    expect(requestBtn.getAttribute('data-tooltip')).toBe('Invia il tuo codice e il pre-impegno cognitivo al tutor maieutico');
+
+    // 3. Invio con pre-impegno valido: viene completato il primo intervento maieutico
+    preCommitmentInput.value = 'Ho ipotizzato che il ciclo for esegua una iterazione di troppo.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    // A sessione avviata, il pulsante commuta in "Invia tentativo aggiornato"
+    expect(requestBtn.textContent).toContain('Invia tentativo aggiornato');
+    expect(requestBtn.getAttribute('data-tooltip')).toBe('Invia il codice o il tentativo aggiornato al tutor maieutico');
+
+    // 4. Clic su "Nuova sessione": ripristina la sessione e resetta l'etichetta iniziale
+    newSessionBtn.click();
+    expect(requestBtn.textContent).toContain('Avvia intervento maieutico');
+    expect(requestBtn.getAttribute('data-tooltip')).toBe('Invia il tuo codice e il pre-impegno cognitivo al tutor maieutico');
   });
 });
 

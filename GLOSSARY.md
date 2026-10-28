@@ -74,6 +74,10 @@ _Avoid_: Cancellazione silenziosa, invio offuscato a server esterni, blocco puni
 Il documento esportabile localmente a fine attività (conforme ad AUP-IA §4.4) che attesta i parametri tecnici della sessione maieutica (strumento, modello linguistico, livello didattico AUP, data) e allega il diario del dialogo per la consegna trasparente al docente.
 _Avoid_: Report di valutazione, pagella, registro di monitoraggio, log di sorveglianza
 
+**Modalità sviluppatore**:
+L'impostazione locale opzionale, conservata esclusivamente in memoria volatile (RAM) nel rispetto del regime zero-data, che consente al docente o allo sviluppatore di ispezionare la catena di pensiero completa (*reasoning*) generata dal modello linguistico mantenendola consultabile nel dialogo anziché applicare la vista effimera protetta a scomparsa.
+_Avoid_: Modalità admin con privilegi server, debug persistente su file, bypass dei guardrail
+
 ## Architettura di inferenza
 
 **Motore di inferenza**:

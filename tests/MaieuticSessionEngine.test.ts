@@ -17,7 +17,10 @@ describe('MaieuticSessionEngine', () => {
     const emptyAttempt = await engine.requestMaieuticIntervention();
     expect(emptyAttempt.status).toBe('rejected_pre_commitment');
     expect(emptyAttempt.pedagogicalMessage).toMatch(/Pre-impegno Cognitivo/i);
-    expect(engine.getSnapshot().turns).toHaveLength(0);
+    expect(engine.getSnapshot().turns).toHaveLength(2);
+    expect(engine.getSnapshot().turns[0].role).toBe('student');
+    expect(engine.getSnapshot().turns[1].role).toBe('tutor');
+    expect(engine.getSnapshot().turns[1].content).toBe(emptyAttempt.pedagogicalMessage);
 
     engine.updateStudentDraft({
       cognitivePreCommitment: 'non so',
@@ -25,7 +28,12 @@ describe('MaieuticSessionEngine', () => {
 
     const tooShortAttempt = await engine.requestMaieuticIntervention();
     expect(tooShortAttempt.status).toBe('rejected_pre_commitment');
-    expect(engine.getSnapshot().turns).toHaveLength(0);
+    expect(engine.getSnapshot().turns).toHaveLength(4);
+
+    // Un ulteriore invio identico senza modifiche non duplica i turni
+    const duplicateAttempt = await engine.requestMaieuticIntervention();
+    expect(duplicateAttempt.status).toBe('rejected_pre_commitment');
+    expect(engine.getSnapshot().turns).toHaveLength(4);
   });
 
   test('consente l\'Intervento Maieutico sul tentativo, permette follow-up socratici e consente di inviare un tentativo di codice aggiornato nei turni successivi', async () => {

@@ -43,7 +43,7 @@ Lo spazio di lavoro è ispirato agli ambienti di sviluppo e alle moderne interfa
   - **Pre-impegno cognitivo** *(obbligatorio)*: dove spieghi con parole tue cosa hai provato a fare, qual è la tua ipotesi e dove ti sei bloccato (collocato in prima posizione secondo il principio *thinking-first* per invitarti a riflettere prima ancora di incollare codice);
   - **Tentativo di codice o pseudocodice**: l'editor in stile IDE dove incolli l'eventuale bozza di programma o query che hai provato a scrivere;
   - **Messaggio di errore del compilatore o interprete**: dove incolli l'eventuale errore restituito dal tuo IDE (opzionale ma utilissimo se il codice non compila);
-  - Pulsante **"Avvia intervento maieutico"**: invia il contesto al tutor; durante l'elaborazione del prompt si trasforma in **"Interrompi elaborazione"** per consentirti di bloccare la generazione in qualunque momento.
+  - Pulsante **"Avvia intervento maieutico"** (o **"Invia tentativo aggiornato"** a conversazione già avviata): invia il tuo tentativo e il pre-impegno cognitivo al tutor; durante l'elaborazione del prompt si trasforma in **"Interrompi elaborazione"** per consentirti di bloccare la generazione in qualunque momento.
 - **Pannello 2 (a destra) — Dialogo maieutico**:
   - Mostra la conversazione con il **tutor maieutico** (perfettamente centrata su qualsiasi risoluzione, anche chiudendo i pannelli laterali);
   - Quando invii un messaggio, vedrai comparire **subito** la tua bolla nella chat e un'**animazione grafica luminosa** che ti indica che il tutor sta elaborando la risposta socratica;
@@ -64,7 +64,7 @@ Ecco la differenza tra un **pre-impegno cognitivo** che viene rifiutato e uno ef
 | *"Non funziona / mi dà errore."* | *"Ho scritto un ciclo `for (int i = 0; i <= 10; i++)` su un array dichiarato `int v[10]`. Il programma compila ma va in crash all'ultimo giro: penso dipenda dall'indice `i <= 10`."* |
 | *"Correggimi la query SQL."* | *"Voglio contare quanti studenti ci sono per ogni classe usando `GROUP BY classe`, ma quando aggiungo la condizione sul numero minimo di studenti con `WHERE COUNT(*) > 20` il database mi restituisce errore di sintassi."* |
 
-> **Suggerimento pratico**: ogni volta che modifichi il tuo codice nell'IDE dopo aver ragionato con il tutor, puoi aggiornare il codice e il **pre-impegno cognitivo** nel pannello di sinistra e cliccare di nuovo sul pulsante di analisi per sottoporre il tuo nuovo tentativo!
+> **Suggerimento pratico**: ogni volta che modifichi il tuo codice nell'IDE dopo aver ragionato con il tutor, puoi aggiornare il codice e il **pre-impegno cognitivo** nel pannello di sinistra e cliccare su **"Invia tentativo aggiornato"** per sottoporre il tuo nuovo tentativo!
 
 ---
 
