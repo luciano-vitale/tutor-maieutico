@@ -260,7 +260,7 @@ describe('WorkspaceUI', () => {
     expect(tutorTurnElBefore.querySelector('[data-testid="copy-turn-btn"]')).not.toBeNull();
   });
 
-  test('mostra il titolo "StudIA Tutor Maieutico" e consente di aprire e chiudere la topbar "Disclosure AUP-IA" tramite l\'icona stile LM Studio posizionata di fianco a quella della sidebar', async () => {
+  test('allinea le 4 icone azione a sinistra sullo stesso livello dell\'ingranaggio a destra e gestisce topbar e pannello di connessione chiusi all\'avvio', async () => {
     const root = document.getElementById('app')!;
     const engine = new MaieuticSessionEngine(
       new FakeInferencePort(),
@@ -274,13 +274,32 @@ describe('WorkspaceUI', () => {
     expect(titleEl.querySelector('.tm-brand-i')?.textContent).toBe('I');
     expect(titleEl.querySelector('.tm-brand-a')?.textContent).toBe('A');
 
+    const toolbarLeft = root.querySelector<HTMLElement>('.tm-toolbar-left')!;
+    const toolbarRight = root.querySelector<HTMLElement>('.tm-toolbar-right')!;
     const sidebarBtn = root.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle-btn"]')!;
     const topbarBtn = root.querySelector<HTMLButtonElement>('[data-testid="topbar-toggle-btn"]')!;
-    const disclosureBanner = root.querySelector<HTMLElement>('[data-testid="aup-disclosure-banner"]')!;
+    const themeBtn = root.querySelector<HTMLButtonElement>('[data-testid="theme-toggle-btn"]')!;
+    const newSessionBtn = root.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
+    const connectionBtn = root.querySelector<HTMLButtonElement>('[data-testid="connection-toggle-btn"]')!;
 
-    expect(topbarBtn).not.toBeNull();
-    expect(topbarBtn.querySelector('svg')).not.toBeNull();
-    expect(sidebarBtn.nextElementSibling).toBe(topbarBtn);
+    const disclosureBanner = root.querySelector<HTMLElement>('[data-testid="aup-disclosure-banner"]')!;
+    const connectionPanel = root.querySelector<HTMLElement>('[data-testid="connection-settings-panel"]')!;
+
+    // Verifica ordine delle 4 icone a sinistra e icona ingranaggio a destra nella stessa toolbar
+    expect(Array.from(toolbarLeft.children)).toEqual([
+      sidebarBtn,
+      topbarBtn,
+      themeBtn,
+      newSessionBtn,
+    ]);
+    expect(Array.from(toolbarRight.children)).toEqual([connectionBtn]);
+    expect(connectionBtn.querySelector('svg')).not.toBeNull();
+
+    // Topbar Disclosure AUP-IA parte chiusa all'avvio e si apre/chiude al clic
+    expect(topbarBtn.getAttribute('aria-expanded')).toBe('false');
+    expect(disclosureBanner.hidden).toBe(true);
+
+    topbarBtn.click();
     expect(topbarBtn.getAttribute('aria-expanded')).toBe('true');
     expect(disclosureBanner.hidden).toBe(false);
 
@@ -288,9 +307,17 @@ describe('WorkspaceUI', () => {
     expect(topbarBtn.getAttribute('aria-expanded')).toBe('false');
     expect(disclosureBanner.hidden).toBe(true);
 
-    topbarBtn.click();
-    expect(topbarBtn.getAttribute('aria-expanded')).toBe('true');
-    expect(disclosureBanner.hidden).toBe(false);
+    // Pannello connessione parte chiuso all'avvio e si apre/chiude al clic sull'ingranaggio
+    expect(connectionBtn.getAttribute('aria-expanded')).toBe('false');
+    expect(connectionPanel.hidden).toBe(true);
+
+    connectionBtn.click();
+    expect(connectionBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(connectionPanel.hidden).toBe(false);
+
+    connectionBtn.click();
+    expect(connectionBtn.getAttribute('aria-expanded')).toBe('false');
+    expect(connectionPanel.hidden).toBe(true);
   });
 });
 

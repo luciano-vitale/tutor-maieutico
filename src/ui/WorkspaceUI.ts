@@ -8,6 +8,7 @@ const ICONS = {
   moonDark: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
   shieldInfo: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
   plugConnect: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>`,
+  settingsGear: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
   newSessionCompose: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>`,
   codeBlock: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
   terminalBug: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>`,
@@ -51,7 +52,8 @@ export async function mountWorkspaceUI(
 ): Promise<void> {
   let currentTheme: 'dark' | 'light' = 'light';
   let isSidebarOpen = true;
-  let isTopbarOpen = true;
+  let isTopbarOpen = false;
+  let isConnectionPanelOpen = false;
   document.documentElement.dataset.theme = currentTheme;
 
   container.innerHTML = `
@@ -63,6 +65,7 @@ export async function mountWorkspaceUI(
           data-testid="aup-disclosure-banner"
           role="region"
           aria-label="Informativa AUP-IA e PUIA"
+          hidden
         >
           <span class="tm-disclosure-icon">${ICONS.shieldInfo}</span>
           <div class="tm-disclosure-text">
@@ -76,8 +79,15 @@ export async function mountWorkspaceUI(
           </div>
         </div>
 
+        <div class="tm-brand">
+          <div class="tm-brand-titles">
+            <h1 class="tm-title">Stud<span class="tm-brand-i">I</span><span class="tm-brand-a">A</span> Tutor Maieutico</h1>
+            <span class="tm-subtitle">I.I.S.S. "Marconi-Hack"</span>
+          </div>
+        </div>
+
         <div class="tm-toolbar">
-          <div class="tm-brand">
+          <div class="tm-toolbar-left">
             <button
               type="button"
               class="tm-icon-btn tm-sidebar-toggle-btn"
@@ -96,54 +106,10 @@ export async function mountWorkspaceUI(
               data-tooltip="Mostra o nascondi la barra superiore di disclosure AUP-IA"
               aria-label="Mostra o nascondi la barra superiore di disclosure AUP-IA"
               aria-controls="aup-disclosure-topbar"
-              aria-expanded="true"
+              aria-expanded="false"
             >
               ${ICONS.topbarPanel}
             </button>
-            <div class="tm-brand-titles">
-              <h1 class="tm-title">Stud<span class="tm-brand-i">I</span><span class="tm-brand-a">A</span> Tutor Maieutico</h1>
-              <span class="tm-subtitle">I.I.S.S. "Marconi-Hack"</span>
-            </div>
-          </div>
-
-          <div class="tm-connection-bar">
-            <div class="tm-status-pill" data-testid="connection-status-badge" aria-live="polite">
-              <span class="tm-led" aria-hidden="true"></span>
-              <span class="tm-status-text"></span>
-            </div>
-
-            <label for="model-select" class="tm-sr-only">Modello linguistico attivo</label>
-            <select
-              id="model-select"
-              name="activeModel"
-              class="tm-input tm-model-select"
-              data-testid="model-select"
-              aria-label="Modello linguistico attivo"
-              title="Seleziona il modello linguistico caricato in LM Studio"
-            ></select>
-
-            <form id="endpoint-config-form" class="tm-endpoint-form" novalidate>
-              <label for="endpoint-url-input" class="tm-sr-only">Endpoint del motore di inferenza (loopback o LAN RFC 1918)</label>
-              <input
-                type="url"
-                id="endpoint-url-input"
-                name="endpointUrl"
-                class="tm-input tm-endpoint-input"
-                aria-describedby="endpoint-help"
-                placeholder="http://127.0.0.1:1234/v1"
-                required
-              />
-              <span id="endpoint-help" class="tm-sr-only">Accetta solo 127.0.0.1, localhost o IP privati LAN RFC 1918</span>
-              <button
-                type="submit"
-                class="tm-icon-btn"
-                data-tooltip="Connetti o verifica l'endpoint LM Studio"
-                aria-label="Connetti o verifica l'endpoint LM Studio"
-              >
-                ${ICONS.plugConnect}
-              </button>
-            </form>
-
             <button
               type="button"
               class="tm-icon-btn"
@@ -153,7 +119,6 @@ export async function mountWorkspaceUI(
             >
               <span class="tm-theme-icon">${ICONS.moonDark}</span>
             </button>
-
             <button
               type="button"
               class="tm-icon-btn"
@@ -164,6 +129,66 @@ export async function mountWorkspaceUI(
               ${ICONS.newSessionCompose}
             </button>
           </div>
+
+          <div class="tm-toolbar-right">
+            <button
+              type="button"
+              class="tm-icon-btn tm-connection-toggle-btn"
+              data-testid="connection-toggle-btn"
+              data-tooltip="Mostra o nascondi le impostazioni di connessione"
+              aria-label="Mostra o nascondi le impostazioni di connessione"
+              aria-controls="connection-settings-panel"
+              aria-expanded="false"
+            >
+              ${ICONS.settingsGear}
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="connection-settings-panel"
+          class="tm-connection-bar"
+          data-testid="connection-settings-panel"
+          role="region"
+          aria-label="Impostazioni di connessione al motore di inferenza"
+          hidden
+        >
+          <div class="tm-status-pill" data-testid="connection-status-badge" aria-live="polite">
+            <span class="tm-led" aria-hidden="true"></span>
+            <span class="tm-status-text"></span>
+          </div>
+
+          <label for="model-select" class="tm-sr-only">Modello linguistico attivo</label>
+          <select
+            id="model-select"
+            name="activeModel"
+            class="tm-input tm-model-select"
+            data-testid="model-select"
+            aria-label="Modello linguistico attivo"
+            title="Seleziona il modello linguistico caricato in LM Studio"
+          ></select>
+
+          <form id="endpoint-config-form" class="tm-endpoint-form" novalidate>
+            <label for="endpoint-url-input" class="tm-sr-only">Endpoint del motore di inferenza (loopback o LAN RFC 1918)</label>
+            <input
+              type="url"
+              id="endpoint-url-input"
+              name="endpointUrl"
+              class="tm-input tm-endpoint-input"
+              aria-describedby="endpoint-help"
+              placeholder="http://127.0.0.1:1234/v1"
+              required
+            />
+            <span id="endpoint-help" class="tm-sr-only">Accetta solo 127.0.0.1, localhost o IP privati LAN RFC 1918</span>
+            <button
+              type="submit"
+              class="tm-icon-btn"
+              data-tooltip="Connetti o verifica l'endpoint LM Studio"
+              aria-label="Connetti o verifica l'endpoint LM Studio"
+            >
+              ${ICONS.plugConnect}
+            </button>
+          </form>
         </div>
       </header>
 
@@ -311,8 +336,14 @@ export async function mountWorkspaceUI(
   const topbarToggleBtn = container.querySelector<HTMLButtonElement>(
     '[data-testid="topbar-toggle-btn"]'
   )!;
+  const connectionToggleBtn = container.querySelector<HTMLButtonElement>(
+    '[data-testid="connection-toggle-btn"]'
+  )!;
   const disclosureBanner = container.querySelector<HTMLElement>(
     '[data-testid="aup-disclosure-banner"]'
+  )!;
+  const connectionPanel = container.querySelector<HTMLElement>(
+    '[data-testid="connection-settings-panel"]'
   )!;
   const leftSidebar = container.querySelector<HTMLElement>('[data-testid="left-panel-context"]')!;
   const themeToggleBtn = container.querySelector<HTMLButtonElement>(
@@ -361,6 +392,16 @@ export async function mountWorkspaceUI(
 
   topbarToggleBtn.addEventListener('click', () => {
     setTopbarOpen(!isTopbarOpen);
+  });
+
+  function setConnectionPanelOpen(open: boolean): void {
+    isConnectionPanelOpen = open;
+    connectionToggleBtn.setAttribute('aria-expanded', String(open));
+    connectionPanel.hidden = !open;
+  }
+
+  connectionToggleBtn.addEventListener('click', () => {
+    setConnectionPanelOpen(!isConnectionPanelOpen);
   });
 
   themeToggleBtn.addEventListener('click', () => {
