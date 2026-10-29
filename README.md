@@ -36,7 +36,7 @@ A differenza dei comuni assistenti di codifica o chatbot generalisti in cloud ch
 │                   Postazione di laboratorio (browser client)               │
 │                                                                            │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │ WorkspaceUI (2 pannelli + banner disclosure AUP-IA + controlli UDL) │  │
+│  │ WorkspaceUI (2 pannelli + banner disclosure AUP-IA + controlli UDL)  │  │
 │  └──────────────────────────────────┬───────────────────────────────────┘  │
 │                                     │                                      │
 │  ┌──────────────────────────────────▼───────────────────────────────────┐  │
