@@ -12,6 +12,14 @@ _Avoid_: Coding assistant risolutivo, generatore di codice, correttore automatic
 La singola risposta prodotta dal tutor maieutico a fronte di un quesito o di un frammento di codice dello studente, strutturata per stimolare il ragionamento tramite domande guida, indizi graduali o analogie astratte.
 _Avoid_: Soluzione, correzione, risposta pronta, completamento di codice
 
+**Risposta socratica**:
+La replica formulata dallo studente durante il dialogo per rispondere alle domande guida del tutor o approfondire la propria comprensione concettuale.
+_Avoid_: Prompt libero, richiesta di codice, query generica
+
+**Compositore maieutico**:
+L'area di immissione testo con espansione ergonomica e pulsante di invio ancorato in basso a destra, tramite cui lo studente redige la propria risposta socratica.
+_Avoid_: Prompt box, chat bar, casella di input generica
+
 **Invariante di non-sostituzione**:
 La regola fondamentale del dominio secondo cui il tutor maieutico non produce mai codice risolutivo applicato all'esercizio dello studente, ma al più micro-esempi sintattici astratti (massimo 3 righe su domini fittizi nei livelli 2 e 3, zero codice sintattico nel livello 1) accompagnati da domande socratiche.
 _Avoid_: Filtro anti-copia, blocco risposta

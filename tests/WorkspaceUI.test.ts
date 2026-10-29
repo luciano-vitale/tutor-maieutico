@@ -615,6 +615,63 @@ describe('WorkspaceUI', () => {
     expect(requestBtn.textContent).toContain('Avvia intervento maieutico');
     expect(requestBtn.getAttribute('data-tooltip')).toBe('Invia il tuo codice e il pre-impegno cognitivo al tutor maieutico');
   });
+
+  test('ridimensiona dinamicamente verso l\'alto il compositore maieutico al crescere del testo, limita l\'altezza a 160px con scroll e la ripristina all\'invio e al reset', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const followUpInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
+    const followUpForm = root.querySelector<HTMLFormElement>('#socratic-followup-form')!;
+    const newSessionBtn = root.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
+
+    // 1. Stato iniziale: vuoto, altezza di default
+    expect(followUpInput.style.height).toBe('');
+    expect(followUpInput.style.overflowY).toBe('hidden');
+
+    // 2. Simuliamo digitazione con scrollHeight espanso (es. 90px per circa 3 righe)
+    Object.defineProperty(followUpInput, 'scrollHeight', {
+      configurable: true,
+      get: () => 90,
+    });
+    followUpInput.value = 'Prima riga\nSeconda riga\nTerza riga';
+    followUpInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(followUpInput.style.height).toBe('90px');
+    expect(followUpInput.style.overflowY).toBe('hidden');
+
+    // 3. Simuliamo digitazione con scrollHeight oltre il limite massimo (es. 240px > 160px)
+    Object.defineProperty(followUpInput, 'scrollHeight', {
+      configurable: true,
+      get: () => 240,
+    });
+    followUpInput.value = 'Testo molto lungo che supera la dimensione massima consentita...';
+    followUpInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(followUpInput.style.height).toBe('160px');
+    expect(followUpInput.style.overflowY).toBe('auto');
+
+    // 4. All'invio del form, il compositore si azzera e l'altezza viene ripristinata a singola riga
+    followUpForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(followUpInput.value).toBe('');
+    expect(followUpInput.style.height).toBe('');
+    expect(followUpInput.style.overflowY).toBe('hidden');
+
+    // 5. Test di ripristino con "Nuova sessione"
+    Object.defineProperty(followUpInput, 'scrollHeight', {
+      configurable: true,
+      get: () => 120,
+    });
+    followUpInput.value = 'Altro testo digitato dallo studente prima di resettare';
+    followUpInput.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(followUpInput.style.height).toBe('120px');
+
+    newSessionBtn.click();
+    expect(followUpInput.value).toBe('');
+    expect(followUpInput.style.height).toBe('');
+    expect(followUpInput.style.overflowY).toBe('hidden');
+  });
 });
 
 

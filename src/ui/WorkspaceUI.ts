@@ -963,6 +963,29 @@ export async function mountWorkspaceUI(
     }
   });
 
+  function autoResizeComposer(): void {
+    if (!followUpInput.value) {
+      followUpInput.style.height = '';
+      followUpInput.style.overflowY = 'hidden';
+      return;
+    }
+    followUpInput.style.height = 'auto';
+    const maxHeight = 160;
+    const scrollH = followUpInput.scrollHeight;
+    if (scrollH > 0) {
+      if (scrollH > maxHeight) {
+        followUpInput.style.height = `${maxHeight}px`;
+        followUpInput.style.overflowY = 'auto';
+      } else {
+        followUpInput.style.height = `${scrollH}px`;
+        followUpInput.style.overflowY = 'hidden';
+      }
+    }
+    scrollToLatest();
+  }
+
+  followUpInput.addEventListener('input', autoResizeComposer);
+
   followUpInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -983,6 +1006,7 @@ export async function mountWorkspaceUI(
       return;
     }
     followUpInput.value = '';
+    autoResizeComposer();
     if (
       isMeaningfulPreCommitment(replyText) &&
       !isMeaningfulPreCommitment(preCommitmentInput.value)
@@ -1005,10 +1029,13 @@ export async function mountWorkspaceUI(
     errorInput.value = '';
     preCommitmentInput.value = '';
     followUpInput.value = '';
+    autoResizeComposer();
     showFeedback(null);
     renderSnapshot(engine.getSnapshot());
     preCommitmentInput.focus();
   });
+
+  autoResizeComposer();
 
   const initialSnapshot = await engine.checkInferenceConnection();
   endpointInput.value = initialSnapshot.endpointUrl;
