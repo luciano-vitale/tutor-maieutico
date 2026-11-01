@@ -203,5 +203,67 @@ describe('MaieuticSessionEngine', () => {
     expect(snap.turns[1].role).toBe('tutor');
     expect(snap.turns[1].content).toBe('[Intervento interrotto dallo studente]');
   });
+
+  test('traccia le statistiche di inferenza (finestra di contesto e velocità tok/s), aggiorna la capienza al cambio modello e le azzera con resetSession', async () => {
+    const inference = new FakeInferencePort();
+    inference.models = ['qwen2.5-coder-7b-instruct', 'llama-3.1-8b-instruct'];
+    inference.modelContextLengths = {
+      'qwen2.5-coder-7b-instruct': 32768,
+      'llama-3.1-8b-instruct': 8192,
+    };
+    inference.cannedUsage = {
+      promptTokens: 1100,
+      completionTokens: 140,
+      totalTokens: 1240,
+      tokensPerSecond: 38.4,
+    };
+
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    await engine.checkInferenceConnection();
+    expect(engine.getSnapshot().inferenceStats).toEqual({
+      contextUsedTokens: 0,
+      contextMaxTokens: 32768,
+      tokensPerSecond: null,
+    });
+
+    engine.updateStudentDraft({
+      cognitivePreCommitment: 'Ho provato a calcolare il fattoriale ma per n=0 restituisce zero.',
+    });
+
+    const liveUpdates: Array<{ contextUsedTokens: number; tokensPerSecond: number | null }> = [];
+    await engine.requestMaieuticIntervention(undefined, {
+      onStatsUpdate: (stats) => {
+        liveUpdates.push({
+          contextUsedTokens: stats.contextUsedTokens,
+          tokensPerSecond: stats.tokensPerSecond,
+        });
+      },
+    });
+
+    expect(liveUpdates.length).toBeGreaterThan(0);
+    expect(engine.getSnapshot().inferenceStats).toEqual({
+      contextUsedTokens: 1240,
+      contextMaxTokens: 32768,
+      tokensPerSecond: 38.4,
+    });
+
+    // Cambio modello linguistico attivo: aggiorna immediatamente contextMaxTokens
+    engine.setActiveModel('llama-3.1-8b-instruct');
+    expect(engine.getSnapshot().inferenceStats).toEqual({
+      contextUsedTokens: 1240,
+      contextMaxTokens: 8192,
+      tokensPerSecond: 38.4,
+    });
+
+    // Reset sessione: azzera i token occupati e la velocità, mantenendo la capienza del modello
+    engine.resetSession();
+    expect(engine.getSnapshot().inferenceStats).toEqual({
+      contextUsedTokens: 0,
+      contextMaxTokens: 8192,
+      tokensPerSecond: null,
+    });
+  });
 });
 

@@ -766,6 +766,86 @@ describe('WorkspaceUI', () => {
     copyBtn.click();
     expect(writeTextMock).toHaveBeenCalledWith(finalTutorMd);
   });
+
+  test('ordina il pannello delle impostazioni nei 5 blocchi richiesti (1. Endpoint, 2. Riquadro modalità/LED, 3. Modello attivo, 4. Statistiche, 5. Modalità sviluppatore) e aggiorna le statistiche di inferenza', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    inference.models = ['qwen2.5-coder-7b-instruct', 'llama-3.1-8b-instruct'];
+    inference.modelContextLengths = {
+      'qwen2.5-coder-7b-instruct': 32768,
+      'llama-3.1-8b-instruct': 8192,
+    };
+    inference.cannedUsage = {
+      promptTokens: 1100,
+      completionTokens: 140,
+      totalTokens: 1240,
+      tokensPerSecond: 42.5,
+    };
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const settingsContent = root.querySelector<HTMLElement>(
+      '[data-testid="connection-settings-panel"] .tm-settings-content'
+    )!;
+    const directChildren = Array.from(settingsContent.children);
+    expect(directChildren).toHaveLength(5);
+
+    // 1. Endpoint motore di inferenza
+    expect(directChildren[0].id).toBe('endpoint-config-form');
+    // 2. Riquadro "Modalità Standalone Loopback" con LED connessione
+    expect(directChildren[1].classList.contains('tm-status-row')).toBe(true);
+    // 3. Selettore modello linguistico attivo
+    expect(directChildren[2].querySelector('#model-select')).not.toBeNull();
+    // 4. Sezione Statistiche (finestra di contesto e tok/s)
+    expect(directChildren[3].getAttribute('data-testid')).toBe('inference-stats-section');
+    // 5. Modalità sviluppatore
+    expect(directChildren[4].classList.contains('tm-dev-mode-group')).toBe(true);
+
+    // Verifica testo sintetico del riquadro di connessione (senza URL o modello duplicati)
+    const statusBadge = root.querySelector<HTMLElement>('[data-testid="connection-status-badge"]')!;
+    expect(statusBadge.textContent?.trim()).toBe('Connesso • Modalità Standalone Loopback');
+
+    // Verifica stato iniziale delle statistiche
+    const statContextEl = root.querySelector<HTMLElement>('[data-testid="stat-context-window"]')!;
+    const statSpeedEl = root.querySelector<HTMLElement>('[data-testid="stat-tokens-per-sec"]')!;
+    expect(statContextEl.textContent).toMatch(/0\s*\/\s*32[.,]?768\s*token/);
+    expect(statSpeedEl.textContent).toBe('—');
+
+    // Esecuzione di un intervento maieutico e verifica aggiornamento statistiche
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const attemptForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    preCommitmentInput.value = 'Ho impostato la ricorsione ma non raggiunge il caso base.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(statContextEl.textContent).toMatch(/1[.,]?240\s*\/\s*32[.,]?768\s*token/);
+    expect(statSpeedEl.textContent).toBe('42,5 tok/s');
+
+    // Cambio modello nel selettore: aggiorna il denominatore della finestra di contesto
+    const modelSelect = root.querySelector<HTMLSelectElement>('#model-select')!;
+    modelSelect.value = 'llama-3.1-8b-instruct';
+    modelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(statContextEl.textContent).toMatch(/1[.,]?240\s*\/\s*8[.,]?192\s*token/);
+
+    // Motore offline: il selettore resta visibile ma disabilitato con "Nessun modello rilevato"
+    inference.shouldFailConnection = true;
+    const endpointForm = root.querySelector<HTMLFormElement>('#endpoint-config-form')!;
+    endpointForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(statusBadge.textContent?.trim()).toBe('Offline • Modalità Standalone Loopback');
+    expect(modelSelect.hidden).toBe(false);
+    expect(modelSelect.disabled).toBe(true);
+    expect(modelSelect.textContent).toBe('Nessun modello rilevato');
+
+    // Reset sessione ("Nuova sessione") azzera le statistiche in RAM
+    const newSessionBtn = root.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
+    newSessionBtn.click();
+    expect(statContextEl.textContent).toBe('0 token');
+    expect(statSpeedEl.textContent).toBe('—');
+  });
 });
 
 

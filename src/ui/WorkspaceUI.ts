@@ -1,4 +1,5 @@
 import {
+  type InferenceStatsSnapshot,
   type MaieuticSessionEngine,
   type MaieuticSessionSnapshot,
   isMeaningfulPreCommitment,
@@ -25,6 +26,15 @@ const ICONS = {
   stopSquare: `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>`,
 };
 
+const IT_INTEGER_FORMATTER = new Intl.NumberFormat('it-IT', {
+  maximumFractionDigits: 0,
+});
+
+const IT_DECIMAL_FORMATTER = new Intl.NumberFormat('it-IT', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
 function formatConnectionBadgeText(snapshot: MaieuticSessionSnapshot): string {
   const modeLabel =
     snapshot.connectionMode === 'loopback'
@@ -32,15 +42,30 @@ function formatConnectionBadgeText(snapshot: MaieuticSessionSnapshot): string {
       : 'Modalità endpoint LAN';
 
   if (snapshot.connectionStatus === 'online') {
-    const modelLabel = snapshot.activeModel ?? 'Modello attivo';
-    return `${modeLabel} (${snapshot.endpointUrl}) • ${modelLabel}`;
+    return `Connesso • ${modeLabel}`;
   }
 
   if (snapshot.connectionStatus === 'offline') {
-    return `Offline • ${modeLabel} (${snapshot.endpointUrl})`;
+    return `Offline • ${modeLabel}`;
   }
 
-  return `Verifica in corso • ${modeLabel} (${snapshot.endpointUrl})`;
+  return `Verifica in corso • ${modeLabel}`;
+}
+
+function formatContextWindowText(stats: InferenceStatsSnapshot): string {
+  const usedFormatted = IT_INTEGER_FORMATTER.format(stats.contextUsedTokens);
+  if (stats.contextMaxTokens !== null && stats.contextMaxTokens > 0) {
+    const maxFormatted = IT_INTEGER_FORMATTER.format(stats.contextMaxTokens);
+    return `${usedFormatted} / ${maxFormatted} token`;
+  }
+  return `${usedFormatted} token`;
+}
+
+function formatTokensPerSecondText(stats: InferenceStatsSnapshot): string {
+  if (stats.tokensPerSecond === null || stats.tokensPerSecond <= 0) {
+    return '—';
+  }
+  return `${IT_DECIMAL_FORMATTER.format(stats.tokensPerSecond)} tok/s`;
 }
 
 export async function mountWorkspaceUI(
@@ -270,32 +295,6 @@ export async function mountWorkspaceUI(
           </div>
 
           <div class="tm-settings-content">
-            <div class="tm-status-row">
-              <div
-                class="tm-status-box"
-                data-testid="connection-status-badge"
-                role="status"
-                aria-live="polite"
-              >
-                <span class="tm-status-text"></span>
-              </div>
-              <span class="tm-led" aria-hidden="true"></span>
-            </div>
-
-            <div class="tm-form-group">
-              <label for="model-select" class="tm-label">
-                Modello linguistico attivo
-              </label>
-              <select
-                id="model-select"
-                name="activeModel"
-                class="tm-input tm-model-select"
-                data-testid="model-select"
-                aria-label="Modello linguistico attivo"
-                title="Seleziona il modello linguistico caricato in LM Studio"
-              ></select>
-            </div>
-
             <form id="endpoint-config-form" class="tm-endpoint-form" novalidate>
               <div class="tm-form-group">
                 <label for="endpoint-url-input" class="tm-label">
@@ -325,6 +324,46 @@ export async function mountWorkspaceUI(
                 </div>
               </div>
             </form>
+
+            <div class="tm-status-row">
+              <div
+                class="tm-status-box"
+                data-testid="connection-status-badge"
+                role="status"
+                aria-live="polite"
+              >
+                <span class="tm-status-text"></span>
+              </div>
+              <span class="tm-led" aria-hidden="true"></span>
+            </div>
+
+            <div class="tm-form-group">
+              <label for="model-select" class="tm-label">
+                Modello linguistico attivo
+              </label>
+              <select
+                id="model-select"
+                name="activeModel"
+                class="tm-input tm-model-select"
+                data-testid="model-select"
+                aria-label="Modello linguistico attivo"
+                title="Seleziona il modello linguistico caricato in LM Studio"
+              ></select>
+            </div>
+
+            <div class="tm-form-group tm-stats-group" data-testid="inference-stats-section">
+              <span class="tm-label">Statistiche</span>
+              <div class="tm-stats-box">
+                <div class="tm-stat-row">
+                  <span class="tm-stat-label">Finestra di contesto</span>
+                  <span class="tm-stat-value" data-testid="stat-context-window">0 token</span>
+                </div>
+                <div class="tm-stat-row">
+                  <span class="tm-stat-label">Velocità di generazione</span>
+                  <span class="tm-stat-value" data-testid="stat-tokens-per-sec">—</span>
+                </div>
+              </div>
+            </div>
 
             <div class="tm-form-group tm-dev-mode-group">
               <label
@@ -400,6 +439,12 @@ export async function mountWorkspaceUI(
   const badgeEl = container.querySelector<HTMLElement>('[data-testid="connection-status-badge"]')!;
   const badgeTextEl = badgeEl.querySelector<HTMLElement>('.tm-status-text')!;
   const modelSelect = container.querySelector<HTMLSelectElement>('#model-select')!;
+  const statContextWindowEl = container.querySelector<HTMLElement>(
+    '[data-testid="stat-context-window"]'
+  )!;
+  const statTokensPerSecEl = container.querySelector<HTMLElement>(
+    '[data-testid="stat-tokens-per-sec"]'
+  )!;
   const endpointForm = container.querySelector<HTMLFormElement>('#endpoint-config-form')!;
   const endpointInput = container.querySelector<HTMLInputElement>('#endpoint-url-input')!;
   const devModeToggle = container.querySelector<HTMLInputElement>('#dev-mode-toggle')!;
@@ -547,6 +592,11 @@ export async function mountWorkspaceUI(
     }
   }
 
+  function renderInferenceStats(stats: InferenceStatsSnapshot): void {
+    statContextWindowEl.textContent = formatContextWindowText(stats);
+    statTokensPerSecEl.textContent = formatTokensPerSecondText(stats);
+  }
+
   function renderHeaderState(snapshot: MaieuticSessionSnapshot): void {
     badgeTextEl.textContent = formatConnectionBadgeText(snapshot);
     badgeEl.dataset.status = snapshot.connectionStatus;
@@ -556,8 +606,9 @@ export async function mountWorkspaceUI(
       ledEl.dataset.status = snapshot.connectionStatus;
     }
 
+    modelSelect.hidden = false;
     if (snapshot.availableModels.length > 0) {
-      modelSelect.hidden = false;
+      modelSelect.disabled = false;
       modelSelect.innerHTML = snapshot.availableModels
         .map(
           (m) =>
@@ -565,9 +616,11 @@ export async function mountWorkspaceUI(
         )
         .join('');
     } else {
-      modelSelect.hidden = true;
-      modelSelect.innerHTML = '';
+      modelSelect.disabled = true;
+      modelSelect.innerHTML = `<option value="">Nessun modello rilevato</option>`;
     }
+
+    renderInferenceStats(snapshot.inferenceStats);
 
     if (document.activeElement !== endpointInput) {
       endpointInput.value = snapshot.endpointUrl;
@@ -817,6 +870,9 @@ export async function mountWorkspaceUI(
 
     const requestPromise = engine.requestMaieuticIntervention(studentFollowUp, {
       stream: true,
+      onStatsUpdate: (stats) => {
+        renderInferenceStats(stats);
+      },
       onReasoningToken: (chunk) => {
         const tutorEl = ensureInitialPendingDOM();
         if (!tutorEl) return;

@@ -99,3 +99,7 @@ _Avoid_: Modalità offline con sincronizzazione, client con cache su disco
 **Modalità endpoint LAN**:
 La configurazione opzionale di laboratorio in cui le postazioni client inviano richieste di inferenza stateless a un motore di inferenza dedicato sulla rete locale d'Istituto, mantenendo comunque l'intera sessione maieutica esclusivamente nella RAM del singolo client e senza alcun log dei prompt sul nodo LAN.
 _Avoid_: Architettura client-server con database centrale, piattaforma cloud d'istituto
+
+**Statistiche di inferenza**:
+Gli indicatori tecnici volatili della sessione corrente che misurano l'occupazione della finestra di contesto (token totali dell'ultimo turno rispetto alla capienza massima del modello) e la velocità di generazione del motore di inferenza (token al secondo), mantenuti esclusivamente in RAM e azzerati a ogni nuova sessione nel rispetto del regime zero-data e del divieto di profilazione dello studente.
+_Avoid_: Telemetria di utilizzo dello studente, analytics di apprendimento, metriche di valutazione

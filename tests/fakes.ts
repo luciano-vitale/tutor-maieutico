@@ -4,20 +4,27 @@ import type {
   ConnectionMode,
   EnvironmentPort,
   InferencePort,
+  InferenceUsageMetrics,
 } from '../src/domain/ports';
 
 export class FakeInferencePort implements InferencePort {
   private endpointUrl = 'http://127.0.0.1:1234/v1';
   private mode: ConnectionMode = 'loopback';
   public models: string[] = ['qwen2.5-coder-7b-instruct'];
+  public modelContextLengths: Record<string, number> = {};
   public shouldFailConnection = false;
   public cannedReasoning = '';
   public cannedReply = 'Quale variabile controlla la terminazione del ciclo?';
+  public cannedUsage: InferenceUsageMetrics | null = null;
   public lastMessages: ChatMessage[] = [];
   public streamDelayMs = 0;
 
   getEndpointUrl(): string {
     return this.endpointUrl;
+  }
+
+  getModelContextLength(modelId: string): number | null {
+    return this.modelContextLengths[modelId] ?? null;
   }
 
   setEndpointUrl(url: string): void {
@@ -85,14 +92,23 @@ export class FakeInferencePort implements InferencePort {
         return accumulated;
       }
     }
+    if (this.cannedUsage && options?.onUsage) {
+      options.onUsage(this.cannedUsage);
+    }
     return this.cannedReply;
   }
 }
 
 export class FakeEnvironmentPort implements EnvironmentPort {
   public currentIso = '2026-10-27T09:15:00.000Z';
+  public currentMs = 1000;
 
   nowIso(): string {
     return this.currentIso;
+  }
+
+  nowMs(): number {
+    this.currentMs += 100;
+    return this.currentMs;
   }
 }

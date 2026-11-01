@@ -218,6 +218,89 @@ describe('LmStudioHttpAdapter', () => {
     expect(receivedTokens).not.toContain(' - Seconda parte');
     expect(reply).toBe('Prima parte');
   });
+
+  test('rileva la capienza della finestra di contesto da GET /v1/models o in fallback silente da GET /api/v0/models ed emette onUsage con i token e tok/s', async () => {
+    const encoder = new TextEncoder();
+    const sseChunks = [
+      'data: {"choices":[{"delta":{"content":"Domanda guida."}}]}\n\n',
+      'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":30,"total_tokens":150},"stats":{"tokens_per_second":42.5}}\n\n',
+      'data: [DONE]\n\n',
+    ];
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of sseChunks) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        controller.close();
+      },
+    });
+
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url === 'http://127.0.0.1:1234/v1/models') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              data: [
+                { id: 'qwen2.5-coder-7b-instruct', loaded_context_length: 16384 },
+                { id: 'llama-3.1-8b-instruct' },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
+      }
+      if (url === 'http://127.0.0.1:1234/api/v0/models') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              data: [
+                {
+                  id: 'llama-3.1-8b-instruct',
+                  loaded_context_length: 8192,
+                  max_context_length: 131072,
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
+      }
+      if (url === 'http://127.0.0.1:1234/v1/chat/completions') {
+        return Promise.resolve(
+          new Response(stream, {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
+    });
+
+    const adapter = new LmStudioHttpAdapter('http://127.0.0.1:1234/v1', mockFetch);
+    const models = await adapter.listModels();
+
+    expect(models).toEqual(['qwen2.5-coder-7b-instruct', 'llama-3.1-8b-instruct']);
+    expect(adapter.getModelContextLength('qwen2.5-coder-7b-instruct')).toBe(16384);
+    expect(adapter.getModelContextLength('llama-3.1-8b-instruct')).toBe(8192);
+    expect(adapter.getModelContextLength('modello-sconosciuto')).toBeNull();
+
+    let capturedUsage = null;
+    await adapter.completeChat([{ role: 'user', content: 'Test' }], {
+      model: 'qwen2.5-coder-7b-instruct',
+      stream: true,
+      onUsage: (u) => {
+        capturedUsage = u;
+      },
+    });
+
+    expect(capturedUsage).toEqual({
+      promptTokens: 120,
+      completionTokens: 30,
+      totalTokens: 150,
+      tokensPerSecond: 42.5,
+    });
+  });
 });
 
 

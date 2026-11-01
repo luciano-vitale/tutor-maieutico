@@ -3,11 +3,87 @@ import type {
   ChatMessage,
   ConnectionMode,
   InferencePort,
+  InferenceUsageMetrics,
 } from '../domain/ports';
 
 export const DEFAULT_LOOPBACK_ENDPOINT = 'http://127.0.0.1:1234/v1';
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+
+interface RawModelMetadata {
+  id?: string;
+  loaded_context_length?: number;
+  context_length?: number;
+  max_context_length?: number;
+  max_model_len?: number;
+}
+
+interface RawUsagePayload {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+interface RawStatsPayload {
+  tokens_per_second?: number;
+}
+
+function extractContextLength(item: RawModelMetadata): number | null {
+  const candidates = [
+    item.loaded_context_length,
+    item.context_length,
+    item.max_context_length,
+    item.max_model_len,
+  ];
+  for (const val of candidates) {
+    if (typeof val === 'number' && Number.isFinite(val) && val > 0) {
+      return Math.round(val);
+    }
+  }
+  return null;
+}
+
+function extractUsageMetrics(
+  usage?: RawUsagePayload,
+  stats?: RawStatsPayload
+): InferenceUsageMetrics | null {
+  const promptTokens =
+    typeof usage?.prompt_tokens === 'number' && Number.isFinite(usage.prompt_tokens)
+      ? usage.prompt_tokens
+      : undefined;
+  const completionTokens =
+    typeof usage?.completion_tokens === 'number' && Number.isFinite(usage.completion_tokens)
+      ? usage.completion_tokens
+      : undefined;
+  const totalTokens =
+    typeof usage?.total_tokens === 'number' && Number.isFinite(usage.total_tokens)
+      ? usage.total_tokens
+      : promptTokens !== undefined && completionTokens !== undefined
+        ? promptTokens + completionTokens
+        : undefined;
+  const tokensPerSecond =
+    typeof stats?.tokens_per_second === 'number' &&
+    Number.isFinite(stats.tokens_per_second) &&
+    stats.tokens_per_second > 0
+      ? stats.tokens_per_second
+      : undefined;
+
+  if (
+    promptTokens === undefined &&
+    completionTokens === undefined &&
+    totalTokens === undefined &&
+    tokensPerSecond === undefined
+  ) {
+    return null;
+  }
+
+  return {
+    ...(promptTokens !== undefined ? { promptTokens } : {}),
+    ...(completionTokens !== undefined ? { completionTokens } : {}),
+    ...(totalTokens !== undefined ? { totalTokens } : {}),
+    ...(tokensPerSecond !== undefined ? { tokensPerSecond } : {}),
+  };
+}
 
 function classifyHost(hostname: string): ConnectionMode | null {
   const lower = hostname.toLowerCase();
@@ -49,6 +125,7 @@ function classifyHost(hostname: string): ConnectionMode | null {
 export class LmStudioHttpAdapter implements InferencePort {
   private endpointUrl: string = DEFAULT_LOOPBACK_ENDPOINT;
   private connectionMode: ConnectionMode = 'loopback';
+  private modelContextLengths = new Map<string, number>();
   private readonly fetchFn: FetchLike;
 
   constructor(
@@ -65,6 +142,10 @@ export class LmStudioHttpAdapter implements InferencePort {
 
   getConnectionMode(): ConnectionMode {
     return this.connectionMode;
+  }
+
+  getModelContextLength(modelId: string): number | null {
+    return this.modelContextLengths.get(modelId) ?? null;
   }
 
   setEndpointUrl(rawUrl: string): void {
@@ -91,6 +172,7 @@ export class LmStudioHttpAdapter implements InferencePort {
     const normalized = parsed.toString().replace(/\/+$/, '');
     this.endpointUrl = normalized;
     this.connectionMode = mode;
+    this.modelContextLengths.clear();
   }
 
   async listModels(): Promise<string[]> {
@@ -103,14 +185,56 @@ export class LmStudioHttpAdapter implements InferencePort {
       throw new Error(`Errore HTTP ${response.status} interrogando GET /v1/models`);
     }
 
-    const payload = (await response.json()) as { data?: Array<{ id?: string }> };
+    const payload = (await response.json()) as { data?: RawModelMetadata[] };
+    this.modelContextLengths.clear();
     if (!Array.isArray(payload.data)) {
       return [];
     }
 
-    return payload.data
-      .map((item) => (typeof item.id === 'string' ? item.id.trim() : ''))
-      .filter((id) => id.length > 0);
+    const models: string[] = [];
+    let missingContextMetadata = false;
+
+    for (const item of payload.data) {
+      const id = typeof item.id === 'string' ? item.id.trim() : '';
+      if (!id) continue;
+      models.push(id);
+      const ctxLen = extractContextLength(item);
+      if (ctxLen !== null) {
+        this.modelContextLengths.set(id, ctxLen);
+      } else {
+        missingContextMetadata = true;
+      }
+    }
+
+    if (models.length > 0 && missingContextMetadata) {
+      await this.tryFetchLmStudioV0Models();
+    }
+
+    return models;
+  }
+
+  private async tryFetchLmStudioV0Models(): Promise<void> {
+    try {
+      const baseHostUrl = this.endpointUrl.replace(/\/v1$/i, '');
+      const v0Response = await this.fetchFn(`${baseHostUrl}/api/v0/models`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      });
+      if (!v0Response?.ok) return;
+      const v0Payload = (await v0Response.json()) as { data?: RawModelMetadata[] };
+      if (!Array.isArray(v0Payload?.data)) return;
+
+      for (const item of v0Payload.data) {
+        const id = typeof item.id === 'string' ? item.id.trim() : '';
+        if (!id || this.modelContextLengths.has(id)) continue;
+        const ctxLen = extractContextLength(item);
+        if (ctxLen !== null) {
+          this.modelContextLengths.set(id, ctxLen);
+        }
+      }
+    } catch {
+      // Fallback silenzioso se l'endpoint esteso /api/v0/models non è esposto
+    }
   }
 
   async completeChat(
@@ -123,6 +247,7 @@ export class LmStudioHttpAdapter implements InferencePort {
       messages,
       temperature: options.temperature ?? 0.3,
       stream: isStream,
+      ...(isStream ? { stream_options: { include_usage: true } } : {}),
     };
 
     const response = await this.fetchFn(`${this.endpointUrl}/chat/completions`, {
@@ -139,7 +264,13 @@ export class LmStudioHttpAdapter implements InferencePort {
     if (!isStream) {
       const data = (await response.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
+        usage?: RawUsagePayload;
+        stats?: RawStatsPayload;
       };
+      const metrics = extractUsageMetrics(data.usage, data.stats);
+      if (metrics) {
+        options.onUsage?.(metrics);
+      }
       const rawContent = data.choices?.[0]?.message?.content ?? '';
       return rawContent.replace(/<think>[\s\S]*?<\/think>\s*/g, '');
     }
@@ -219,7 +350,13 @@ export class LmStudioHttpAdapter implements InferencePort {
             delta?: { content?: string; reasoning_content?: string; reasoning?: string };
             message?: { content?: string; reasoning_content?: string };
           }>;
+          usage?: RawUsagePayload;
+          stats?: RawStatsPayload;
         };
+        const metrics = extractUsageMetrics(parsed.usage, parsed.stats);
+        if (metrics) {
+          options.onUsage?.(metrics);
+        }
         const choice = parsed.choices?.[0];
         const reasoningToken =
           choice?.delta?.reasoning_content ??

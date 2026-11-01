@@ -3,6 +3,7 @@ import type {
   ConnectionMode,
   EnvironmentPort,
   InferencePort,
+  InferenceUsageMetrics,
 } from './ports';
 
 export interface DialogueTurn {
@@ -22,6 +23,12 @@ export type StudentDraftInput = Partial<StudentDraft>;
 
 export type ConnectionStatus = 'idle' | 'online' | 'offline';
 
+export interface InferenceStatsSnapshot {
+  contextUsedTokens: number;
+  contextMaxTokens: number | null;
+  tokensPerSecond: number | null;
+}
+
 export interface MaieuticSessionSnapshot extends StudentDraft {
   endpointUrl: string;
   connectionMode: ConnectionMode;
@@ -29,6 +36,7 @@ export interface MaieuticSessionSnapshot extends StudentDraft {
   availableModels: string[];
   activeModel: string | null;
   turns: DialogueTurn[];
+  inferenceStats: InferenceStatsSnapshot;
 }
 
 export interface InterventionResult {
@@ -41,6 +49,7 @@ export interface RequestInterventionOptions {
   stream?: boolean;
   onToken?: (chunk: string) => void;
   onReasoningToken?: (chunk: string) => void;
+  onStatsUpdate?: (stats: InferenceStatsSnapshot) => void;
 }
 
 const MIN_PRE_COMMITMENT_CHARS = 15;
@@ -70,6 +79,20 @@ function emptyDraft(): StudentDraft {
   };
 }
 
+function estimateTokensFromText(text: string): number {
+  const len = text.length;
+  if (len === 0) return 0;
+  return Math.max(1, Math.ceil(len / 4));
+}
+
+function estimatePromptTokens(messages: ChatMessage[]): number {
+  let total = 0;
+  for (const msg of messages) {
+    total += estimateTokensFromText(msg.content) + 4;
+  }
+  return total;
+}
+
 export class MaieuticSessionEngine {
   private readonly inferencePort: InferencePort;
   private readonly environmentPort: EnvironmentPort;
@@ -81,10 +104,34 @@ export class MaieuticSessionEngine {
 
   private draft: StudentDraft = emptyDraft();
   private turns: DialogueTurn[] = [];
+  private contextUsedTokens = 0;
+  private tokensPerSecond: number | null = null;
 
   constructor(inferencePort: InferencePort, environmentPort: EnvironmentPort) {
     this.inferencePort = inferencePort;
     this.environmentPort = environmentPort;
+  }
+
+  private getCurrentTimeMs(): number {
+    if (typeof this.environmentPort.nowMs === 'function') {
+      return this.environmentPort.nowMs();
+    }
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+  }
+
+  private getActiveModelContextLength(): number | null {
+    if (!this.activeModel || typeof this.inferencePort.getModelContextLength !== 'function') {
+      return null;
+    }
+    return this.inferencePort.getModelContextLength(this.activeModel);
+  }
+
+  private buildInferenceStats(): InferenceStatsSnapshot {
+    return {
+      contextUsedTokens: this.contextUsedTokens,
+      contextMaxTokens: this.getActiveModelContextLength(),
+      tokensPerSecond: this.tokensPerSecond,
+    };
   }
 
   getSnapshot(): MaieuticSessionSnapshot {
@@ -98,6 +145,7 @@ export class MaieuticSessionEngine {
       compilerError: this.draft.compilerError,
       cognitivePreCommitment: this.draft.cognitivePreCommitment,
       turns: this.turns.map((turn) => ({ ...turn })),
+      inferenceStats: this.buildInferenceStats(),
     };
   }
 
@@ -237,6 +285,61 @@ export class MaieuticSessionEngine {
 
     let accumulatedReasoning = '';
     let accumulatedContent = '';
+    let streamedChunkCount = 0;
+    const requestStartMs = this.getCurrentTimeMs();
+    let firstTokenMs: number | null = null;
+    const estimatedPromptToks = estimatePromptTokens(messages);
+    let reportedUsage: InferenceUsageMetrics | null = null;
+
+    const updateLiveStats = (): void => {
+      const nowMs = this.getCurrentTimeMs();
+      if (firstTokenMs === null) {
+        firstTokenMs = nowMs;
+      }
+      const estimatedCompletionToks = Math.max(
+        streamedChunkCount,
+        estimateTokensFromText(accumulatedReasoning + accumulatedContent)
+      );
+      const elapsedSec = Math.max(
+        0.05,
+        (nowMs - (firstTokenMs > requestStartMs ? requestStartMs : firstTokenMs)) / 1000
+      );
+      this.contextUsedTokens =
+        reportedUsage?.totalTokens ?? estimatedPromptToks + estimatedCompletionToks;
+      this.tokensPerSecond =
+        reportedUsage?.tokensPerSecond ??
+        Math.round((estimatedCompletionToks / elapsedSec) * 10) / 10;
+      options?.onStatsUpdate?.(this.buildInferenceStats());
+    };
+
+    const finalizeTurnStats = (finalReply: string): void => {
+      const endMs = this.getCurrentTimeMs();
+      const totalElapsedSec = Math.max(0.05, (endMs - requestStartMs) / 1000);
+      const estimatedCompletionToks = Math.max(
+        streamedChunkCount,
+        estimateTokensFromText(accumulatedReasoning + finalReply)
+      );
+      const completionToks = reportedUsage?.completionTokens ?? estimatedCompletionToks;
+      const totalToks =
+        reportedUsage?.totalTokens ??
+        (reportedUsage?.promptTokens !== undefined
+          ? reportedUsage.promptTokens + completionToks
+          : estimatedPromptToks + completionToks);
+
+      if (totalToks > 0) {
+        this.contextUsedTokens = totalToks;
+      }
+      if (reportedUsage?.tokensPerSecond !== undefined && reportedUsage.tokensPerSecond > 0) {
+        this.tokensPerSecond = Math.round(reportedUsage.tokensPerSecond * 10) / 10;
+      } else if (completionToks > 0) {
+        const genElapsedSec =
+          firstTokenMs !== null && endMs > firstTokenMs
+            ? Math.max(0.05, (endMs - firstTokenMs) / 1000)
+            : totalElapsedSec;
+        this.tokensPerSecond = Math.round((completionToks / genElapsedSec) * 10) / 10;
+      }
+      options?.onStatsUpdate?.(this.buildInferenceStats());
+    };
 
     try {
       const reply = await this.inferencePort.completeChat(messages, {
@@ -245,11 +348,21 @@ export class MaieuticSessionEngine {
         signal: abortController.signal,
         onToken: (chunk) => {
           accumulatedContent += chunk;
+          streamedChunkCount += 1;
+          updateLiveStats();
           options?.onToken?.(chunk);
         },
         onReasoningToken: (chunk) => {
           accumulatedReasoning += chunk;
+          streamedChunkCount += 1;
+          updateLiveStats();
           options?.onReasoningToken?.(chunk);
+        },
+        onUsage: (usage) => {
+          reportedUsage = {
+            ...reportedUsage,
+            ...usage,
+          };
         },
       });
 
@@ -259,6 +372,9 @@ export class MaieuticSessionEngine {
         this.connectionStatus = 'online';
         const hasText = effectiveContent.trim().length > 0;
         const finalContent = hasText ? effectiveContent : '[Intervento interrotto dallo studente]';
+        if (hasText || accumulatedReasoning.length > 0) {
+          finalizeTurnStats(hasText ? effectiveContent : '');
+        }
 
         this.turns.push({
           role: 'tutor',
@@ -272,6 +388,8 @@ export class MaieuticSessionEngine {
           assistantReply: finalContent,
         };
       }
+
+      finalizeTurnStats(effectiveContent);
 
       this.turns.push({
         role: 'tutor',
@@ -294,6 +412,9 @@ export class MaieuticSessionEngine {
         this.connectionStatus = 'online';
         const hasText = accumulatedContent.trim().length > 0;
         const finalContent = hasText ? accumulatedContent : '[Intervento interrotto dallo studente]';
+        if (hasText || accumulatedReasoning.length > 0) {
+          finalizeTurnStats(hasText ? accumulatedContent : '');
+        }
 
         this.turns.push({
           role: 'tutor',
@@ -326,6 +447,8 @@ export class MaieuticSessionEngine {
     this.abortCurrentIntervention();
     this.draft = emptyDraft();
     this.turns = [];
+    this.contextUsedTokens = 0;
+    this.tokensPerSecond = null;
   }
 
   private buildDraftPrompt(): string {
