@@ -814,10 +814,116 @@ body {
 }
 
 .tm-turn-body {
-  white-space: pre-wrap;
+  white-space: normal;
+  word-break: break-word;
   font-size: 0.94rem;
   line-height: 1.62;
   color: var(--tm-text);
+}
+
+.tm-turn-body > :first-child {
+  margin-top: 0;
+}
+
+.tm-turn-body > :last-child {
+  margin-bottom: 0;
+}
+
+.tm-turn-body p {
+  margin: 0 0 0.65rem;
+}
+
+.tm-turn-body h1,
+.tm-turn-body h2,
+.tm-turn-body h3,
+.tm-turn-body h4,
+.tm-turn-body h5,
+.tm-turn-body h6 {
+  margin: 0.85rem 0 0.35rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--tm-text);
+}
+
+.tm-turn-body h1 {
+  font-size: 1.15rem;
+}
+
+.tm-turn-body h2 {
+  font-size: 1.05rem;
+}
+
+.tm-turn-body h3 {
+  font-size: 0.92rem;
+}
+
+.tm-turn-body h4,
+.tm-turn-body h5,
+.tm-turn-body h6 {
+  font-size: 0.88rem;
+}
+
+.tm-turn-body pre {
+  margin: 0.45rem 0 0.7rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.55rem;
+  background: var(--tm-surface-subtle);
+  border: 1px solid var(--tm-border);
+  overflow-x: auto;
+  font-family: var(--tm-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.tm-turn-student .tm-turn-body pre {
+  background: var(--tm-input-bg);
+}
+
+.tm-turn-body pre code {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  white-space: pre;
+}
+
+.tm-turn-body :not(pre) > code {
+  font-family: var(--tm-font-mono);
+  font-size: 0.84em;
+  padding: 0.12rem 0.36rem;
+  border-radius: 0.32rem;
+  background: var(--tm-surface-subtle);
+  border: 1px solid var(--tm-border);
+}
+
+.tm-turn-student .tm-turn-body :not(pre) > code {
+  background: var(--tm-input-bg);
+}
+
+.tm-turn-body ul,
+.tm-turn-body ol {
+  margin: 0.4rem 0 0.65rem;
+  padding-left: 1.35rem;
+}
+
+.tm-turn-body li + li {
+  margin-top: 0.22rem;
+}
+
+.tm-turn-body blockquote {
+  margin: 0.5rem 0 0.65rem;
+  padding: 0.25rem 0.75rem;
+  border-left: 3px solid var(--tm-border-strong);
+  color: var(--tm-text-secondary);
+}
+
+.tm-turn-body hr {
+  border: 0;
+  border-top: 1px solid var(--tm-border);
+  margin: 0.75rem 0;
 }
 
 .tm-turn-actions {

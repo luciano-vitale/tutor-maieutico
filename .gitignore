@@ -85,3 +85,6 @@ normativa/
 
 # Prompt Log
 prompt-log.md
+
+# Documentazione interna riservata agli sviluppatori
+docs/sviluppo/

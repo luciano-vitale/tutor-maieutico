@@ -672,6 +672,100 @@ describe('WorkspaceUI', () => {
     expect(followUpInput.style.height).toBe('');
     expect(followUpInput.style.overflowY).toBe('hidden');
   });
+
+  test('renderizza l\'anteprima Markdown formattata (senza codice puro) sia nei turni dello studente che negli interventi maieutici del tutor in streaming e a fine turno, proteggendo da XSS e copiando il sorgente Markdown originale', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+
+    let streamCallbacks: {
+      onToken?: (chunk: string) => void;
+    } = {};
+    let resolveChat!: (value: string) => void;
+
+    inference.completeChat = vi.fn().mockImplementation((_messages, opts) => {
+      streamCallbacks = opts ?? {};
+      return new Promise<string>((resolve) => {
+        resolveChat = resolve;
+      });
+    });
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const codeInput = root.querySelector<HTMLTextAreaElement>('#student-code-input')!;
+    const errorInput = root.querySelector<HTMLTextAreaElement>('#compiler-error-input')!;
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const attemptForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+
+    codeInput.value = 'vector<int> v(10);\nfor (int i = 0; i <= 10; i++) v[i] = i;';
+    codeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    errorInput.value = 'Error: index 10 out of bounds for type vector<int>';
+    errorInput.dispatchEvent(new Event('input', { bubbles: true }));
+    preCommitmentInput.value =
+      'Ho usato **<= 10** su `indice_corrente` con `<script>alert(1)</script>`, ma va fuori limite.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    // 1. Verifica che il turno dello studente sia renderizzato in HTML formattato e non mostri '###' o '```'
+    const studentBody = dialogueList.querySelector<HTMLElement>('.tm-turn-student .tm-turn-body')!;
+    expect(studentBody).not.toBeNull();
+    expect(studentBody.textContent).not.toContain('###');
+    expect(studentBody.textContent).not.toContain('```');
+
+    const studentHeadings = Array.from(studentBody.querySelectorAll('h3')).map((h) => h.textContent);
+    expect(studentHeadings).toEqual([
+      'Tentativo di codice o pseudocodice',
+      'Errore del compilatore o interprete',
+      'Pre-impegno cognitivo dello studente',
+    ]);
+
+    const studentCodeBlocks = Array.from(studentBody.querySelectorAll('pre code'));
+    expect(studentCodeBlocks).toHaveLength(2);
+    expect(studentCodeBlocks[0].textContent).toContain('vector<int> v(10);');
+    expect(studentCodeBlocks[1].textContent).toContain('Error: index 10 out of bounds');
+
+    expect(studentBody.querySelector('strong')?.textContent).toBe('<= 10');
+    expect(studentBody.querySelector('p code')?.textContent).toBe('indice_corrente');
+    // Protezione XSS: <script> non diventa un elemento DOM eseguibile
+    expect(studentBody.querySelector('script')).toBeNull();
+    expect(studentBody.textContent).toContain('<script>alert(1)</script>');
+
+    // 2. Streaming del turno del tutor con blocco di codice parziale ancora aperto
+    const partialTutorMd =
+      '### Analisi del ciclo\nOsserva la variabile `indice_corrente` e questi **due punti**:\n- Primo indice: `0`\n- Ultimo indice: *qual è?*\n```cpp\nint limite = N - 1;';
+    streamCallbacks.onToken?.(partialTutorMd);
+
+    const tutorBody = dialogueList.querySelector<HTMLElement>('.tm-turn-tutor .tm-turn-body')!;
+    expect(tutorBody.textContent).not.toContain('###');
+    expect(tutorBody.textContent).not.toContain('```');
+    expect(tutorBody.querySelector('h3')?.textContent).toBe('Analisi del ciclo');
+    expect(tutorBody.querySelector('strong')?.textContent).toBe('due punti');
+    expect(tutorBody.querySelector('em')?.textContent).toBe('qual è?');
+    expect(tutorBody.querySelectorAll('ul li')).toHaveLength(2);
+    expect(tutorBody.querySelector('pre code')?.textContent).toBe('int limite = N - 1;');
+
+    // 3. Chiusura dello stream del tutor
+    const finalTutorMd = `${partialTutorMd}\n\`\`\``;
+    streamCallbacks.onToken?.('\n```');
+    resolveChat(finalTutorMd);
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(tutorBody.querySelector('pre code')?.textContent).toBe('int limite = N - 1;');
+    expect(tutorBody.textContent).not.toContain('```');
+
+    // 4. Il pulsante "Copia intervento" copia il sorgente Markdown originale negli appunti
+    const copyBtn = dialogueList.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    copyBtn.click();
+    expect(writeTextMock).toHaveBeenCalledWith(finalTutorMd);
+  });
 });
 
 

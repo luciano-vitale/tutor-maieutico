@@ -336,7 +336,9 @@ export class MaieuticSessionEngine {
       );
     }
     if (this.draft.compilerError.trim().length > 0) {
-      sections.push(`### Errore del compilatore o interprete\n${this.draft.compilerError.trim()}`);
+      sections.push(
+        `### Errore del compilatore o interprete\n\`\`\`\n${this.draft.compilerError.trim()}\n\`\`\``
+      );
     }
     sections.push(
       `### Pre-impegno cognitivo dello studente\n${this.draft.cognitivePreCommitment.trim()}`
