@@ -767,6 +767,69 @@ describe('WorkspaceUI', () => {
     expect(writeTextMock).toHaveBeenCalledWith(finalTutorMd);
   });
 
+  test('renderizza le formule matematiche LaTeX in MathML sia nei turni del tutor che dello studente e preserva il LaTeX originale nella copia negli appunti', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+
+    let streamCallbacks: {
+      onToken?: (chunk: string) => void;
+    } = {};
+    let resolveChat!: (value: string) => void;
+
+    inference.completeChat = vi.fn().mockImplementation((_messages, opts) => {
+      streamCallbacks = opts ?? {};
+      return new Promise<string>((resolve) => {
+        resolveChat = resolve;
+      });
+    });
+
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const attemptForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const dialogueList = root.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+
+    preCommitmentInput.value =
+      'Ho ipotizzato che il passo dimezzi lo spazio di ricerca con $T(n) = T(\\frac{n}{2}) + \\mathcal{O}(1)$.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    // Verifica turno studente renderizzato con MathML
+    const studentBody = dialogueList.querySelector<HTMLElement>('.tm-turn-student .tm-turn-body')!;
+    expect(studentBody.querySelectorAll('math').length).toBeGreaterThan(0);
+    expect(studentBody.querySelector('mfrac')).not.toBeNull();
+    expect(studentBody.textContent).not.toContain('\\frac');
+
+    // Streaming turno tutor con formula tronca tipica (es. $\frac{28}{2})
+    const tutorChunk =
+      'Osserva il punto medio: se l\'intervallo ha ampiezza 28, considera (es. $\\frac{28}{2}) e verifica l\'indice.';
+    streamCallbacks.onToken?.(tutorChunk);
+
+    const tutorBody = dialogueList.querySelector<HTMLElement>('.tm-turn-tutor .tm-turn-body')!;
+    expect(tutorBody.querySelector('math')).not.toBeNull();
+    expect(tutorBody.querySelector('mfrac')).not.toBeNull();
+    expect(tutorBody.textContent).not.toContain('\\frac');
+
+    // Risoluzione chat
+    resolveChat(tutorChunk);
+    await new Promise((r) => setTimeout(r, 10));
+
+    const finalTutorBody = dialogueList.querySelector<HTMLElement>('.tm-turn-tutor .tm-turn-body')!;
+    expect(finalTutorBody.querySelector('mfrac')?.textContent).toBe('282');
+
+    // Copia turno tutor: verifica che copi il testo LaTeX sorgente e non il DOM MathML
+    const copyBtn = dialogueList.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    copyBtn.click();
+    expect(writeTextMock).toHaveBeenCalledWith(tutorChunk);
+  });
+
   test('ordina il pannello delle impostazioni nei 5 blocchi richiesti (1. Endpoint, 2. Riquadro modalità/LED, 3. Modello attivo, 4. Statistiche, 5. Modalità sviluppatore) e aggiorna le statistiche di inferenza', async () => {
     const root = document.getElementById('app')!;
     const inference = new FakeInferencePort();

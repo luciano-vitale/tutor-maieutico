@@ -969,6 +969,26 @@ body {
   margin: 0.75rem 0;
 }
 
+.tm-turn-body math {
+  font-family: Latin Modern Math, STIX Two Math, Cambria Math, KaTeX_Main, serif;
+  font-size: 1.05em;
+  line-height: 1.2;
+}
+
+.tm-math-block {
+  display: block;
+  margin: 0.75rem 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35rem 0;
+}
+
+.tm-math-block math[display="block"] {
+  display: inline-block;
+  margin: 0 auto;
+}
+
 .tm-turn-actions {
   display: flex;
   align-items: center;
