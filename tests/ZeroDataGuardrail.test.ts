@@ -247,7 +247,7 @@ describe('ZeroDataGuardrail', () => {
     });
   });
 
-  describe('Regressioni Piano di Test Esecutivo (TC-PII, TC-SEC, TC-CU12, TC-NEG)', () => {
+  describe('regressioni piano di test esecutivo (TC-PII, TC-SEC, TC-CU12, TC-NEG)', () => {
     test('TC-PII-01 — Intestazioni anagrafiche multiple sulla stessa riga ed email nei commenti del codice', () => {
       const inputPayload = [
         '# Autore: Marco Rossi',

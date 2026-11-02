@@ -1114,6 +1114,47 @@ describe('WorkspaceUI', () => {
     expect(followupInput.value).toContain('[DATO RIMOSSO]');
   });
 
+  test('non duplica il testo non sanitizzato nel campo pre-impegno cognitivo se il primo invio dal compositore maieutico viene bloccato dal guardrail zero-data', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const completeChatSpy = vi.spyOn(inference, 'completeChat');
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+
+    await mountWorkspaceUI(root, engine);
+
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const followupInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
+    const followupForm = root.querySelector<HTMLFormElement>('#socratic-followup-form')!;
+
+    expect(preCommitmentInput.value).toBe('');
+
+    followupInput.value =
+      'Sono Luciano Vitale della classe 3IC, la mia mail è luciano.vitale@marconihack.edu.it e non capisco perché il ciclo non termina.';
+    followupInput.dispatchEvent(new Event('input', { bubbles: true }));
+    followupForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    // L'invio viene bloccato: il testo resta nel compositore maieutico e NON contamina il pre-impegno laterale
+    expect(completeChatSpy).not.toHaveBeenCalled();
+    expect(preCommitmentInput.value).toBe('');
+    expect(followupInput.value).toContain('Luciano Vitale');
+
+    // Lo studente aziona la sanitizzazione assistita e poi invia dal compositore maieutico
+    const sanitizeBtn = root.querySelector<HTMLButtonElement>('[data-testid="sanitize-assisted-btn"]')!;
+    sanitizeBtn.click();
+
+    expect(followupInput.value).not.toContain('Luciano Vitale');
+    expect(followupInput.value).toContain('[DATO RIMOSSO]');
+    expect(preCommitmentInput.value).toBe('');
+
+    followupForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(completeChatSpy).toHaveBeenCalledTimes(1);
+    expect(preCommitmentInput.value).toContain('[DATO RIMOSSO]');
+    expect(preCommitmentInput.value).not.toContain('Luciano Vitale');
+  });
+
   test('TC-E2E-01 — Blocco multi-campo, sanitizzazione simultanea senza inglobare frasi adiacenti e re-invio valido', async () => {
     const root = document.getElementById('app')!;
     const inference = new FakeInferencePort();

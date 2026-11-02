@@ -3,7 +3,7 @@ import { MaieuticSessionEngine } from '../src/domain/MaieuticSessionEngine';
 import { FakeEnvironmentPort, FakeInferencePort } from './fakes';
 
 describe('MaieuticSessionEngine', () => {
-  test('blocca la richiesta di Intervento Maieutico se il Pre-impegno Cognitivo è assente o non significativo', async () => {
+  test('blocca la richiesta di intervento maieutico se il pre-impegno cognitivo è assente o non significativo', async () => {
     const inference = new FakeInferencePort();
     const env = new FakeEnvironmentPort();
     const engine = new MaieuticSessionEngine(inference, env);
@@ -16,7 +16,7 @@ describe('MaieuticSessionEngine', () => {
 
     const emptyAttempt = await engine.requestMaieuticIntervention();
     expect(emptyAttempt.status).toBe('rejected_pre_commitment');
-    expect(emptyAttempt.pedagogicalMessage).toMatch(/Pre-impegno Cognitivo/i);
+    expect(emptyAttempt.pedagogicalMessage).toMatch(/pre-impegno cognitivo/i);
     expect(engine.getSnapshot().turns).toHaveLength(2);
     expect(engine.getSnapshot().turns[0].role).toBe('student');
     expect(engine.getSnapshot().turns[1].role).toBe('tutor');
@@ -36,7 +36,7 @@ describe('MaieuticSessionEngine', () => {
     expect(engine.getSnapshot().turns).toHaveLength(4);
   });
 
-  test('consente l\'Intervento Maieutico sul tentativo, permette follow-up socratici e consente di inviare un tentativo di codice aggiornato nei turni successivi', async () => {
+  test('consente l\'intervento maieutico sul tentativo, permette follow-up socratici e consente di inviare un tentativo di codice aggiornato nei turni successivi', async () => {
     const inference = new FakeInferencePort();
     const env = new FakeEnvironmentPort();
     const engine = new MaieuticSessionEngine(inference, env);
@@ -80,7 +80,7 @@ describe('MaieuticSessionEngine', () => {
     expect(engine.getSnapshot().turns[4].content).toContain('i < 10');
   });
 
-  test('azzera istantaneamente tutti i dati della Sessione Maieutica in RAM con resetSession ("Nuova Sessione")', async () => {
+  test('azzera istantaneamente tutti i dati della sessione maieutica in RAM con resetSession ("Nuova sessione")', async () => {
     const inference = new FakeInferencePort();
     const env = new FakeEnvironmentPort();
     const engine = new MaieuticSessionEngine(inference, env);

@@ -1157,6 +1157,15 @@ export async function mountWorkspaceUI(
       },
     });
 
+    // Se il pre-impegno cognitivo è valido e ha superato il guardrail zero-data, sincronizza il campo laterale
+    const currentSnap = engine.getSnapshot();
+    if (
+      !isMeaningfulPreCommitment(preCommitmentInput.value) &&
+      isMeaningfulPreCommitment(currentSnap.cognitivePreCommitment)
+    ) {
+      preCommitmentInput.value = currentSnap.cognitivePreCommitment;
+    }
+
     // Se il pre-impegno cognitivo è valido, il turno studente è già stato aggiunto sincronamente in RAM
     const activePendingTutor = ensureInitialPendingDOM();
     scrollToLatest(true);
@@ -1322,12 +1331,6 @@ export async function mountWorkspaceUI(
     }
     followUpInput.value = '';
     autoResizeComposer();
-    if (
-      isMeaningfulPreCommitment(replyText) &&
-      !isMeaningfulPreCommitment(preCommitmentInput.value)
-    ) {
-      preCommitmentInput.value = replyText.trim();
-    }
     await runInterventionRequest(replyText);
   });
 

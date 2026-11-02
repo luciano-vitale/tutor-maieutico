@@ -71,8 +71,8 @@ La condizione operativa (PUIA §4) in cui l'applicazione opera senza database, s
 _Avoid_: Anonimizzazione post-hoc, pseudonimizzazione, profilazione anonima
 
 **Guardrail zero-data**:
-Il controllo preventivo eseguito localmente sul client prima dell'invio al motore di inferenza, che rileva e blocca pattern riconducibili a dati personali (es. nomi, email, codici fiscali), credenziali/chiavi API o riferimenti a diagnosi/PDP/PEI.
-_Avoid_: Moderazione cloud, filtro server-side, DLP esterno
+Il controllo preventivo eseguito localmente sul client prima dell'invio al motore di inferenza, che rileva e blocca pattern riconducibili a dati personali (es. nomi, email, codici fiscali), credenziali/chiavi API o riferimenti a diagnosi/PDP/PEI, incrementando a ogni blocco esclusivamente un contatore numerico volatile nella sessione maieutica senza mai registrare o persistere il dato intercettato.
+_Avoid_: Moderazione cloud, filtro server-side, DLP esterno, log dei dati bloccati
 
 **Sanitizzazione assistita**:
 L'azione educativa locale proposta allo studente quando il guardrail zero-data intercetta una violazione, che sostituisce automaticamente nel testo i pattern sensibili rilevati con il segnaposto `[DATO RIMOSSO]` e, in presenza di riferimenti a difficoltà di apprendimento (`CU-12`), orienta lo studente verso i controlli universali di scaffolding cognitivo senza trasmettere alcun dato particolare al motore di inferenza.
