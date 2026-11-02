@@ -1113,6 +1113,58 @@ describe('WorkspaceUI', () => {
     expect(followupInput.value).not.toContain('RSSMRA85M01H501Z');
     expect(followupInput.value).toContain('[DATO RIMOSSO]');
   });
+
+  test('TC-E2E-01 — Blocco multi-campo, sanitizzazione simultanea senza inglobare frasi adiacenti e re-invio valido', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const completeChatSpy = vi.spyOn(inference, 'completeChat');
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const codeInput = root.querySelector<HTMLTextAreaElement>('#student-code-input')!;
+    const errorInput = root.querySelector<HTMLTextAreaElement>('#compiler-error-input')!;
+    const form = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const statCounter = root.querySelector<HTMLElement>('[data-testid="stat-zero-data-interventions"]')!;
+
+    expect(statCounter.textContent).toBe('0');
+
+    preCommitmentInput.value = 'Alunno: Luca Neri. Ho il PDP per dislessia, penso che il ciclo vada in overflow.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    codeInput.value = '// Autore: Luca Neri\nconst ' + 'api_key = "sk-999999999999999999999999"' + ';';
+    codeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    errorInput.value = 'Fatal error for user luca.neri@scuola.edu.it (tel 3331122334)';
+    errorInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(completeChatSpy).not.toHaveBeenCalled();
+    expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(1);
+    expect(statCounter.textContent).toBe('1');
+
+    const zeroDataAlert = root.querySelector('[data-testid="zero-data-alert"]')!;
+    expect(zeroDataAlert.hasAttribute('hidden')).toBe(false);
+    expect(zeroDataAlert.textContent).toMatch(/AUP-IA §4\.1|PUIA §4/i);
+    expect(zeroDataAlert.textContent).toMatch(/AUP-IA §6\.1/i);
+    expect(zeroDataAlert.textContent).toMatch(/Art\. 9 GDPR|CU-12/i);
+
+    const sanitizeBtn = root.querySelector<HTMLButtonElement>('[data-testid="sanitize-assisted-btn"]')!;
+    sanitizeBtn.click();
+
+    expect(preCommitmentInput.value).toBe(
+      '[DATO RIMOSSO]. Ho il [DATO RIMOSSO] per [DATO RIMOSSO], penso che il ciclo vada in overflow.'
+    );
+    expect(codeInput.value).toBe('// [DATO RIMOSSO]\nconst [DATO RIMOSSO];');
+    expect(errorInput.value).toBe('Fatal error for user [DATO RIMOSSO] (tel [DATO RIMOSSO])');
+
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(completeChatSpy).toHaveBeenCalledTimes(1);
+    expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(1);
+    expect(statCounter.textContent).toBe('1');
+  });
 });
 
 

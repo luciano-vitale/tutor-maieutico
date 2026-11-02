@@ -88,3 +88,6 @@ prompt-log.md
 
 # Documentazione interna riservata agli sviluppatori
 docs/sviluppo/
+
+# Piano di test ticket #3
+piano_di_test_guardrail_zero_data.md

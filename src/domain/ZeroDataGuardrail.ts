@@ -23,6 +23,7 @@ interface PatternRule {
   regex: RegExp;
   ruleCitation: string;
   description: string;
+  sanitizeReplacement?: (...args: string[]) => string;
 }
 
 const PATTERN_RULES: PatternRule[] = [
@@ -43,16 +44,39 @@ const PATTERN_RULES: PatternRule[] = [
   // PII - Numeri di telefono italiani (+39, 0039, cellulari o fissi)
   {
     category: 'pii',
-    regex: /(?:\+39[\s.-]?|0039[\s.-]?)?(?:3\d{2}[\s.-]?\d{6,7}|0\d{1,3}[\s.-]?\d{5,8})\b/g,
+    regex: /(?<![A-Za-z0-9_])(?:\+39[\s.-]?|0039[\s.-]?)?(?:3\d{2}[\s.-]?\d{6,7}|0\d{1,3}[\s.-]?\d{5,8})\b/g,
     ruleCitation: 'AUP-IA §4.1, PUIA §4',
     description: 'Numero telefonico rilevato',
   },
   // PII - Intestazioni anagrafiche nei commenti o nel codice
   {
     category: 'pii',
-    regex: /\b(?:Autore|Alunno|Studente|Nome|Cognome|Classe)\s*:\s*(?!\[DATO RIMOSSO\])[A-Za-z0-9À-ÿ][^\r\n,;*\/]+/gi,
+    regex: /\b(?:Autore|Alunno|Alunna|Studente|Studentessa|Nome\s+e\s+cognome|Nome|Cognome|Classe)\s*:\s*(?!\[DATO RIMOSSO\])[A-Za-z0-9À-ÿ](?:[^\r\n,.;*\/()\-]*[A-Za-z0-9À-ÿ])?/gi,
     ruleCitation: 'AUP-IA §4.1, PUIA §4',
     description: 'Intestazione anagrafica rilevata',
+  },
+  // PII - Presentazioni anagrafiche discorsive nel testo (es. "Sono Luciano Vitale", "Mi chiamo Mario Rossi", "il mio nome è ...", "il mio cognome è ...")
+  {
+    category: 'pii',
+    regex: /(\b(?:(?:[Ii]o\s+)?[Ss]ono(?:\s+(?:lo\s+|la\s+|un(?:o|a)?\s+)?(?:studente|studentessa|alunno|alunna|ragazzo|ragazza))?|[Mm]i\s+chiamo|[Ii]l\s+mio\s+nome\s+è|[Ii]l\s+mio\s+cognome\s+è)\s+)(?!\[DATO RIMOSSO\])(?!in\b|un\b|una\b|uno\b|il\b|lo\b|la\b|del\b|della\b|dello\b|bloccato\b|bloccata\b|fermo\b|ferma\b|arrivato\b|arrivata\b|riuscito\b|riuscita\b|sicuro\b|sicura\b|convinto\b|convinta\b|qui\b|alle\b|al\b|su\b|con\b|per\b|tra\b|fra\b|Python\b|Java\b|C\b|C\+\+|JavaScript\b|TypeScript\b|HTML\b|CSS\b|SQL\b|PHP\b|Linux\b|Windows\b|Mac\b|Arduino\b)([A-ZÀ-Ý][a-zà-ÿ']+(?:\s+(?!(?:e|ed|ma|o|oppure|perché|poiché|quando|dove|come|se|che|non|della|nella|alla|in|del|nel|al|con|per|su|tra|fra|da|di|a|ho|ha|sono|è|frequento|studio)\b)(?:(?:[Dd][aei]|L[ao]|[Dd]'|[Dd]el|[Dd]ella|[Dd]i)\s+)?[A-ZÀ-Ý][a-zà-ÿ']+){0,2})\b/g,
+    ruleCitation: 'AUP-IA §4.1, PUIA §4',
+    description: 'Nominativo personale rilevato',
+    sanitizeReplacement: (_full, prefix) => `${prefix}${PLACEHOLDER_REMOVED}`,
+  },
+  {
+    category: 'pii',
+    regex: /(\b(?:[Mm]i\s+chiamo|[Ii]l\s+mio\s+nome\s+è|[Ii]l\s+mio\s+cognome\s+è)\s+)(?!\[DATO RIMOSSO\])([A-Za-zÀ-ÿ']+(?:\s+(?!(?:e|ed|ma|o|oppure|perché|poiché|quando|dove|come|se|che|non|della|nella|alla|in|del|nel|al|con|per|su|tra|fra|da|di|a|ho|ha|sono|è|frequento|studio|la|il|lo|un|una|mi)\b)[A-Za-zÀ-ÿ']+){0,2})\b/gi,
+    ruleCitation: 'AUP-IA §4.1, PUIA §4',
+    description: 'Nominativo personale rilevato',
+    sanitizeReplacement: (_full, prefix) => `${prefix}${PLACEHOLDER_REMOVED}`,
+  },
+  // PII - Indicazione discorsiva della classe scolastica (es. "della classe 3IC", "classe 4A Informatica", "della 3IC", "in 3IC")
+  {
+    category: 'pii',
+    regex: /(\b(?:(?:della|nella|alla|in|frequento\s+la)\s+classe\s+|classe\s+|(?:della|nella|in)\s+))(?!\[DATO RIMOSSO\])([1-5]\s*[A-Za-z]{1,4}(?:\s+(?:Informatica|Telecomunicazioni|Elettronica|Automazione|Liceo|Scientifico|Scienze\s+Applicate|Biennio|Triennio))?)\b/gi,
+    ruleCitation: 'AUP-IA §4.1, PUIA §4',
+    description: 'Riferimento alla classe scolastica rilevato',
+    sanitizeReplacement: (_full, prefix) => `${prefix}${PLACEHOLDER_REMOVED}`,
   },
   // Credenziali - API keys note (OpenAI, GitHub, Google)
   {
@@ -68,16 +92,40 @@ const PATTERN_RULES: PatternRule[] = [
     ruleCitation: 'AUP-IA §6.1',
     description: 'Token di autorizzazione Bearer rilevato',
   },
+  // Credenziali - Comunicazioni discorsive con possessivo, specificazione o introduzione esplicita (es. "La mia password è ...", "la password del wifi è ...", "uso come password ...")
+  {
+    category: 'credentials',
+    regex: /(\b(?:(?:(?:la\s+)?(?:mia|nostra|sua|tua)|(?:il\s+)?(?:mio|nostro|suo|tuo))\s+(?:password|passwd|pwd|pass|pin|codice\s+pin|chiave\s+api|api\s*key|token)(?:\s+(?:personale|segreta|segreto|(?:(?:del|della|dello|dei|degli|delle|di)\s+|dell'\s*)[^\s,;:]+))?\s*(?:è|[:=])\s*|(?:(?:la|il)\s+)?(?:password|passwd|pwd|pass|pin|codice\s+pin|chiave\s+api|api\s*key|token)\s+(?:(?:del|della|dello|dei|degli|delle|di)\s+|dell'\s*)[^\s,;:]+\s*(?:è|[:=])\s*|(?:uso|usando|inserisco|inserendo|metto|messo|scelgo|scelto|imposto|impostato)\s+come\s+(?:password|passwd|pwd|pass|pin)\s+))(?!\[DATO RIMOSSO\])(?:['"][^'"]+['"]|[^\s,;]+)/gi,
+    ruleCitation: 'AUP-IA §6.1',
+    description: 'Credenziale o password comunicata nel testo rilevata',
+    sanitizeReplacement: (_full, prefix) => `${prefix}${PLACEHOLDER_REMOVED}`,
+  },
+  // Credenziali - Comunicazioni discorsive dirette ("la password è ...", "password è ...", "il pin è ..."), escludendo predicati didattici
+  {
+    category: 'credentials',
+    regex: /(\b(?:(?:la|il)\s+)?(?:password|passwd|pwd|pin|codice\s+pin|chiave\s+api|api\s*key)\s+è\s+)(?!\[DATO RIMOSSO\])(?!(?:corretta|corretto|esatta|esatto|giusta|giusto|sbagliata|sbagliato|errata|errato|valida|valido|invalida|invalido|vuota|vuoto|lunga|lungo|corta|corto|breve|uguale|diversa|diverso|forte|debole|sicura|sicuro|insicura|insicuro|composta|composto|formata|formato|inserita|inserito|digitata|digitato|letta|letto|salvata|salvato|memorizzata|memorizzato|cifrata|cifrato|criptata|criptato|hashata|hashato|richiesta|richiesto|accettata|accettato|rifiutata|rifiutato|scaduta|scaduto|bloccata|bloccato|un|una|uno|il|lo|la|i|gli|le|di|da|in|con|su|per|tra|fra|più|meno|troppo|molto|poco|almeno|sempre|mai|ancora|già|non|vero|vera|falso|falsa|true|false|null|none|undefined)\b)(?:['"][^'"]+['"]|[^\s,;]+)/gi,
+    ruleCitation: 'AUP-IA §6.1',
+    description: 'Password o segreto comunicato nel testo rilevato',
+    sanitizeReplacement: (_full, prefix) => `${prefix}${PLACEHOLDER_REMOVED}`,
+  },
+  // Credenziali - Token complessi con cifre/simboli subito dopo "password" (es. "password Admin1234!")
+  {
+    category: 'credentials',
+    regex: /(\b(?:password|passwd|pwd)\s+)(?!\[DATO RIMOSSO\])(?![:=]\s*)(?=[^\s,;]*[\d@!#$%^&*])([^\s,;]+)/gi,
+    ruleCitation: 'AUP-IA §6.1',
+    description: 'Password rilevata nel testo',
+    sanitizeReplacement: (_full, prefix) => `${prefix}${PLACEHOLDER_REMOVED}`,
+  },
   // Credenziali - Assegnazioni api_key o password
   {
     category: 'credentials',
-    regex: /\bapi_key\s*[:=]\s*(?:['"][^'"]*['"]|[a-zA-Z0-9_-]+)/gi,
+    regex: /\b(?:api_key|apiKey)\s*[:=]\s*(?!\[DATO RIMOSSO\])(?:['"][^'"]*['"]|[a-zA-Z0-9_-]+)/gi,
     ruleCitation: 'AUP-IA §6.1',
     description: 'Assegnazione di chiave API rilevata',
   },
   {
     category: 'credentials',
-    regex: /\bpassword\s*[:=]\s*(?:['"][^'"]*['"]|[^\s;,]+)/gi,
+    regex: /\b(?:password|passwd|pwd)\s*[:=]\s*(?!\[DATO RIMOSSO\])(?:['"][^'"]*['"]|[^\s;,]+)/gi,
     ruleCitation: 'AUP-IA §6.1',
     description: 'Assegnazione di password rilevata',
   },
@@ -166,8 +214,12 @@ export function sanitizeZeroData(text: string): string {
 
   for (const rule of PATTERN_RULES) {
     rule.regex.lastIndex = 0;
-    sanitized = sanitized.replace(rule.regex, (matched) => {
+    sanitized = sanitized.replace(rule.regex, (...args) => {
+      const matched = args[0] as string;
       if (matched === PLACEHOLDER_REMOVED) return matched;
+      if (rule.sanitizeReplacement) {
+        return rule.sanitizeReplacement(...(args as string[]));
+      }
       return PLACEHOLDER_REMOVED;
     });
   }
