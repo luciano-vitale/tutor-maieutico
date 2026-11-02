@@ -155,6 +155,14 @@ export async function mountWorkspaceUI(
         hidden
       ></div>
 
+      <div
+        class="tm-feedback-banner tm-zero-data-banner"
+        data-testid="zero-data-alert"
+        role="alert"
+        aria-live="assertive"
+        hidden
+      ></div>
+
       <main class="tm-workspace" data-sidebar-open="true" data-settings-open="false" role="main">
         <aside
           id="left-sidebar-panel"
@@ -166,6 +174,45 @@ export async function mountWorkspaceUI(
             <h2 id="left-panel-heading" class="tm-panel-title">
               Contesto e tentativo dello studente
             </h2>
+          </div>
+
+          <div
+            id="udl-scaffolding-panel"
+            class="tm-udl-panel"
+            data-testid="udl-scaffolding-panel"
+            hidden
+          >
+            <div class="tm-udl-header">
+              <span class="tm-udl-title">Scaffolding cognitivo UDL (ADR-0002)</span>
+              <button
+                type="button"
+                class="tm-udl-close-btn"
+                data-testid="close-udl-panel-btn"
+                aria-label="Chiudi pannello scaffolding"
+              >✕</button>
+            </div>
+            <p class="tm-field-hint">
+              Adattamento universale della comunicazione didattica (nessuna etichetta clinica, PUIA §4).
+            </p>
+            <div class="tm-form-group">
+              <label for="udl-level-select" class="tm-label">Complessità linguistica</label>
+              <select id="udl-level-select" class="tm-input" data-testid="udl-level-select">
+                <option value="biennio">Profilo biennio (classi I–II: lessico essenziale e concreto)</option>
+                <option value="triennio">Profilo triennio (classi III–V: lessico tecnico formale)</option>
+              </select>
+            </div>
+            <div class="tm-form-group tm-checkbox-group">
+              <label class="tm-checkbox-label">
+                <input type="checkbox" id="udl-short-replies" data-testid="udl-short-replies" />
+                <span>Risposte brevi ad alta leggibilità</span>
+              </label>
+            </div>
+            <div class="tm-form-group tm-checkbox-group">
+              <label class="tm-checkbox-label">
+                <input type="checkbox" id="udl-micro-steps" data-testid="udl-micro-steps" />
+                <span>Scomposizione in micro-passaggi numerati</span>
+              </label>
+            </div>
           </div>
 
           <form id="student-attempt-form" class="tm-form" novalidate>
@@ -374,6 +421,10 @@ export async function mountWorkspaceUI(
                   <span class="tm-stat-label">Velocità di generazione</span>
                   <span class="tm-stat-value" data-testid="stat-tokens-per-sec">—</span>
                 </div>
+                <div class="tm-stat-row">
+                  <span class="tm-stat-label">Interventi guardrail zero-data</span>
+                  <span class="tm-stat-value" data-testid="stat-zero-data-interventions">0</span>
+                </div>
               </div>
             </div>
 
@@ -462,6 +513,14 @@ export async function mountWorkspaceUI(
   const devModeToggle = container.querySelector<HTMLInputElement>('#dev-mode-toggle')!;
   const newSessionBtn = container.querySelector<HTMLButtonElement>('[data-testid="new-session-btn"]')!;
   const feedbackBanner = container.querySelector<HTMLElement>('[data-testid="pedagogical-feedback"]')!;
+  const zeroDataAlert = container.querySelector<HTMLElement>('[data-testid="zero-data-alert"]')!;
+  const udlScaffoldingPanel = container.querySelector<HTMLElement>('[data-testid="udl-scaffolding-panel"]')!;
+  const closeUdlBtn = container.querySelector<HTMLButtonElement>('[data-testid="close-udl-panel-btn"]');
+  if (closeUdlBtn) {
+    closeUdlBtn.addEventListener('click', () => {
+      udlScaffoldingPanel.hidden = true;
+    });
+  }
 
   const attemptForm = container.querySelector<HTMLFormElement>('#student-attempt-form')!;
   const requestBtn = container.querySelector<HTMLButtonElement>('[data-testid="request-intervention-btn"]')!;
@@ -545,6 +604,117 @@ export async function mountWorkspaceUI(
     }
     feedbackBanner.hidden = false;
     feedbackBanner.textContent = message;
+  }
+
+  function showZeroDataAlert(
+    result: {
+      pedagogicalMessage?: string;
+      zeroDataResult?: import('../domain/ZeroDataGuardrail').ZeroDataInspectionResult;
+    } | null
+  ): void {
+    if (!result || !result.zeroDataResult) {
+      zeroDataAlert.hidden = true;
+      zeroDataAlert.innerHTML = '';
+      return;
+    }
+
+    const { zeroDataResult } = result;
+    const categories = zeroDataResult.categories;
+    const categoryBullets: string[] = [];
+
+    if (categories.includes('pii')) {
+      categoryBullets.push(
+        '<li><strong>Dati identificativi o intestazioni anagrafiche</strong> nei commenti o nel testo (AUP-IA §4.1, PUIA §4)</li>'
+      );
+    }
+    if (categories.includes('credentials')) {
+      categoryBullets.push(
+        '<li><strong>Credenziali, password o chiavi API</strong> (AUP-IA §6.1)</li>'
+      );
+    }
+    if (categories.includes('clinical_cu12')) {
+      categoryBullets.push(
+        '<li><strong>Termini clinici o riferimenti a piani diagnostici</strong> protetti (CU-12, ADR-0002, art. 9 GDPR)</li>'
+      );
+    }
+
+    const udlNotice = zeroDataResult.hasClinicalCu12
+      ? `
+        <div class="tm-zero-data-udl-notice">
+          <p class="tm-zero-data-udl-text">
+            ${escapeHtml(
+              zeroDataResult.udlScaffoldingSuggestion ??
+                'Igiene digitale e privacy (CU-12 / ADR-0002): non inserire mai diagnosi nei prompt. Per adattare il supporto didattico alle tue esigenze in totale anonimato, attiva lo scaffolding cognitivo UDL.'
+            )}
+          </p>
+          <button
+            type="button"
+            class="tm-btn-link"
+            data-testid="open-udl-scaffolding-btn"
+          >
+            Personalizza scaffolding cognitivo UDL
+          </button>
+        </div>
+      `
+      : '';
+
+    zeroDataAlert.innerHTML = `
+      <div class="tm-zero-data-content">
+        <div class="tm-zero-data-header">
+          <strong>Guardrail zero-data pre-invio (AUP-IA §4.1, §6.1, PUIA §4, CU-12)</strong>
+        </div>
+        <p class="tm-zero-data-lead">
+          L'invio al motore di inferenza è stato bloccato localmente: nessun dato personale o riservato è stato trasmesso in rete.
+        </p>
+        <ul class="tm-zero-data-list">
+          ${categoryBullets.join('')}
+        </ul>
+        ${udlNotice}
+        <div class="tm-zero-data-actions">
+          <button
+            type="button"
+            class="tm-btn-sanitize"
+            data-testid="sanitize-assisted-btn"
+          >
+            Sanitizzazione assistita (rimuovi dati rilevati)
+          </button>
+        </div>
+      </div>
+    `;
+    zeroDataAlert.hidden = false;
+
+    const sanitizeBtn = zeroDataAlert.querySelector<HTMLButtonElement>(
+      '[data-testid="sanitize-assisted-btn"]'
+    );
+    if (sanitizeBtn) {
+      sanitizeBtn.addEventListener('click', () => {
+        engine.sanitizeStudentDraft();
+        if (followUpInput.value) {
+          followUpInput.value = engine.sanitizeText(followUpInput.value);
+          autoResizeComposer();
+        }
+        const snap = engine.getSnapshot();
+        codeInput.value = snap.studentCode;
+        errorInput.value = snap.compilerError;
+        preCommitmentInput.value = snap.cognitivePreCommitment;
+
+        showZeroDataAlert(null);
+      });
+    }
+
+    const udlBtn = zeroDataAlert.querySelector<HTMLButtonElement>(
+      '[data-testid="open-udl-scaffolding-btn"]'
+    );
+    if (udlBtn) {
+      udlBtn.addEventListener('click', () => {
+        if (!isSidebarOpen) {
+          setSidebarOpen(true);
+        }
+        udlScaffoldingPanel.hidden = false;
+        const select = udlScaffoldingPanel.querySelector<HTMLElement>('#udl-level-select');
+        select?.focus();
+      });
+    }
   }
 
   function updateRequestButtonState(busy: boolean, snapshot = engine.getSnapshot()): void {
@@ -681,6 +851,13 @@ export async function mountWorkspaceUI(
     }
 
     renderInferenceStats(snapshot.inferenceStats);
+
+    const statZeroDataInterventionsEl = container.querySelector<HTMLElement>(
+      '[data-testid="stat-zero-data-interventions"]'
+    );
+    if (statZeroDataInterventionsEl) {
+      statZeroDataInterventionsEl.textContent = String(snapshot.zeroDataInterventionsCount);
+    }
 
     if (document.activeElement !== endpointInput) {
       endpointInput.value = snapshot.endpointUrl;
@@ -899,6 +1076,7 @@ export async function mountWorkspaceUI(
   async function runInterventionRequest(studentFollowUp?: string): Promise<boolean> {
     if (isGenerating) return false;
     showFeedback(null);
+    showZeroDataAlert(null);
 
     let streamAccum = '';
     let reasoningAccum = '';
@@ -999,6 +1177,16 @@ export async function mountWorkspaceUI(
           el.remove();
         }
       });
+
+      if (result.status === 'rejected_zero_data') {
+        if (studentFollowUp !== undefined && followUpInput.value.length === 0) {
+          followUpInput.value = studentFollowUp;
+          autoResizeComposer();
+        }
+        renderSnapshot(finalSnap);
+        showZeroDataAlert(result);
+        return false;
+      }
 
       if (result.status === 'rejected_pre_commitment') {
         renderSnapshot(finalSnap);
@@ -1152,6 +1340,8 @@ export async function mountWorkspaceUI(
     followUpInput.value = '';
     autoResizeComposer();
     showFeedback(null);
+    showZeroDataAlert(null);
+    udlScaffoldingPanel.hidden = true;
     renderSnapshot(engine.getSnapshot());
     preCommitmentInput.focus();
   });

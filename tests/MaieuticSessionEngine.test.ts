@@ -100,6 +100,108 @@ describe('MaieuticSessionEngine', () => {
     expect(snapshot.compilerError).toBe('');
     expect(snapshot.cognitivePreCommitment).toBe('');
     expect(snapshot.turns).toEqual([]);
+    expect(snapshot.zeroDataInterventionsCount).toBe(0);
+  });
+
+  test('blocca la richiesta verso InferencePort se codice, errore, pre-impegno o risposta contengono violazioni zero-data', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    await engine.checkInferenceConnection();
+    inference.lastMessages = [];
+
+    // 1. Violazione PII nel codice dello studente
+    engine.updateStudentDraft({
+      studentCode: '/* Autore: Mario Rossi, Classe: 3A */\nint main() { return 0; }',
+      compilerError: '',
+      cognitivePreCommitment: 'Ho provato a impostare la funzione main e il valore di ritorno.',
+    });
+
+    const piiAttempt = await engine.requestMaieuticIntervention();
+    expect(piiAttempt.status).toBe('rejected_zero_data');
+    expect(piiAttempt.zeroDataResult?.categories).toContain('pii');
+    expect(inference.lastMessages).toHaveLength(0); // Nessun byte inviato all'InferencePort
+    expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(1);
+    // Nessun PII salvato nei turni di conversazione
+    expect(engine.getSnapshot().turns).toHaveLength(0);
+
+    // 2. Violazione credenziali nel codice
+    engine.updateStudentDraft({
+      studentCode: 'const apiKey = "sk-1234567890abcdef12345678";',
+      cognitivePreCommitment: 'Sto provando a chiamare un endpoint con la chiave API.',
+    });
+
+    const credAttempt = await engine.requestMaieuticIntervention();
+    expect(credAttempt.status).toBe('rejected_zero_data');
+    expect(credAttempt.zeroDataResult?.categories).toContain('credentials');
+    expect(inference.lastMessages).toHaveLength(0);
+    expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(2);
+
+    // 3. Violazione clinica CU-12 nel pre-impegno
+    engine.updateStudentDraft({
+      studentCode: 'int x = 10;',
+      cognitivePreCommitment: 'Ho la dislessia e DSA, non riesco a capire questo costrutto.',
+    });
+
+    const cu12Attempt = await engine.requestMaieuticIntervention();
+    expect(cu12Attempt.status).toBe('rejected_zero_data');
+    expect(cu12Attempt.zeroDataResult?.hasClinicalCu12).toBe(true);
+    expect(cu12Attempt.zeroDataResult?.udlScaffoldingSuggestion).toContain('scaffolding cognitivo UDL');
+    expect(inference.lastMessages).toHaveLength(0);
+    expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(3);
+
+    // 4. Violazione nella risposta socratica della chat (follow-up)
+    // Prima impostiamo un draft pulito valido
+    engine.updateStudentDraft({
+      studentCode: 'int x = 10;',
+      compilerError: '',
+      cognitivePreCommitment: 'Ho provato ad assegnare 10 a x e vorrei capire il tipo.',
+    });
+    const validTurn = await engine.requestMaieuticIntervention();
+    expect(validTurn.status).toBe('ok');
+    expect(inference.lastMessages.length).toBeGreaterThan(0);
+
+    inference.lastMessages = [];
+    const followUpViolation = await engine.requestMaieuticIntervention('La mia email è mario.rossi@scuola.it');
+    expect(followUpViolation.status).toBe('rejected_zero_data');
+    expect(followUpViolation.zeroDataResult?.categories).toContain('pii');
+    expect(inference.lastMessages).toHaveLength(0);
+    expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(4);
+  });
+
+  test('espone la funzione di sanitizzazione assistita che rimpiazza i match con [DATO RIMOSSO] e sblocca l\'invio', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    await engine.checkInferenceConnection();
+
+    engine.updateStudentDraft({
+      studentCode: '/* Autore: Mario Rossi, Classe: 3A */\nconst key = "sk-1234567890abcdef12345678";\nint x = 0;',
+      compilerError: 'error: mario.rossi@scuola.it undefined',
+      cognitivePreCommitment: 'Ho la dislessia e non capisco perché il compilatore dà errore.',
+    });
+
+    const blocked = await engine.requestMaieuticIntervention();
+    expect(blocked.status).toBe('rejected_zero_data');
+
+    // Esegue la sanitizzazione assistita
+    engine.sanitizeStudentDraft();
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.studentCode).not.toContain('Mario Rossi');
+    expect(snapshot.studentCode).not.toContain('sk-1234567890abcdef12345678');
+    expect(snapshot.studentCode).toContain('[DATO RIMOSSO]');
+    expect(snapshot.compilerError).not.toContain('mario.rossi@scuola.it');
+    expect(snapshot.compilerError).toContain('[DATO RIMOSSO]');
+    expect(snapshot.cognitivePreCommitment).not.toContain('dislessia');
+    expect(snapshot.cognitivePreCommitment).toContain('[DATO RIMOSSO]');
+
+    // Ora l'invio deve avere successo
+    const resubmission = await engine.requestMaieuticIntervention();
+    expect(resubmission.status).toBe('ok');
+    expect(resubmission.assistantReply).toBeDefined();
   });
 
   test('attiva lo streaming di default, propaga onReasoningToken e onToken, conserva il ragionamento nel turno UI ma lo esclude dal payload messages dei turni successivi', async () => {

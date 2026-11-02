@@ -5,6 +5,11 @@ import type {
   InferencePort,
   InferenceUsageMetrics,
 } from './ports';
+import {
+  inspectZeroData,
+  sanitizeZeroData,
+  type ZeroDataInspectionResult,
+} from './ZeroDataGuardrail';
 
 export interface DialogueTurn {
   role: 'student' | 'tutor';
@@ -37,12 +42,20 @@ export interface MaieuticSessionSnapshot extends StudentDraft {
   activeModel: string | null;
   turns: DialogueTurn[];
   inferenceStats: InferenceStatsSnapshot;
+  zeroDataInterventionsCount: number;
 }
 
 export interface InterventionResult {
-  status: 'ok' | 'rejected_pre_commitment' | 'rejected_empty_reply' | 'inference_error' | 'aborted';
+  status:
+    | 'ok'
+    | 'rejected_pre_commitment'
+    | 'rejected_empty_reply'
+    | 'rejected_zero_data'
+    | 'inference_error'
+    | 'aborted';
   assistantReply?: string;
   pedagogicalMessage?: string;
+  zeroDataResult?: ZeroDataInspectionResult;
 }
 
 export interface RequestInterventionOptions {
@@ -106,6 +119,7 @@ export class MaieuticSessionEngine {
   private turns: DialogueTurn[] = [];
   private contextUsedTokens = 0;
   private tokensPerSecond: number | null = null;
+  private zeroDataInterventionsCount = 0;
 
   constructor(inferencePort: InferencePort, environmentPort: EnvironmentPort) {
     this.inferencePort = inferencePort;
@@ -146,6 +160,7 @@ export class MaieuticSessionEngine {
       cognitivePreCommitment: this.draft.cognitivePreCommitment,
       turns: this.turns.map((turn) => ({ ...turn })),
       inferenceStats: this.buildInferenceStats(),
+      zeroDataInterventionsCount: this.zeroDataInterventionsCount,
     };
   }
 
@@ -158,6 +173,18 @@ export class MaieuticSessionEngine {
         ? { cognitivePreCommitment: input.cognitivePreCommitment }
         : {}),
     };
+  }
+
+  sanitizeStudentDraft(): void {
+    this.draft = {
+      studentCode: sanitizeZeroData(this.draft.studentCode),
+      compilerError: sanitizeZeroData(this.draft.compilerError),
+      cognitivePreCommitment: sanitizeZeroData(this.draft.cognitivePreCommitment),
+    };
+  }
+
+  sanitizeText(text: string): string {
+    return sanitizeZeroData(text);
   }
 
   async checkInferenceConnection(): Promise<MaieuticSessionSnapshot> {
@@ -203,6 +230,30 @@ export class MaieuticSessionEngine {
   ): Promise<InterventionResult> {
     const isFollowUpReply = studentFollowUp !== undefined;
     const followUpTrimmed = studentFollowUp?.trim() ?? '';
+
+    // Guardrail zero-data pre-invio: ispeziona localmente tutti i campi prima di qualsiasi trasmissione
+    const textToInspect = isFollowUpReply
+      ? [
+          studentFollowUp,
+          this.draft.studentCode,
+          this.draft.compilerError,
+          this.draft.cognitivePreCommitment,
+        ].join('\n')
+      : [
+          this.draft.studentCode,
+          this.draft.compilerError,
+          this.draft.cognitivePreCommitment,
+        ].join('\n');
+
+    const zeroDataResult = inspectZeroData(textToInspect);
+    if (!zeroDataResult.allowed) {
+      this.zeroDataInterventionsCount += 1;
+      return {
+        status: 'rejected_zero_data',
+        pedagogicalMessage: zeroDataResult.pedagogicalMessage,
+        zeroDataResult,
+      };
+    }
 
     // Se l'invio avviene dalla barra di chat e il pre-impegno nel pannello laterale non è ancora valido:
     // valuta se il testo digitato nella chat è sufficiente per fungere da pre-impegno cognitivo
@@ -449,6 +500,7 @@ export class MaieuticSessionEngine {
     this.turns = [];
     this.contextUsedTokens = 0;
     this.tokensPerSecond = null;
+    this.zeroDataInterventionsCount = 0;
   }
 
   private buildDraftPrompt(): string {

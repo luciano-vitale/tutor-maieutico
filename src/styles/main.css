@@ -439,6 +439,142 @@ body {
   font-weight: 500;
 }
 
+.tm-zero-data-banner {
+  background: var(--tm-danger-bg);
+  border: 1px solid var(--tm-danger);
+  color: var(--tm-text);
+  padding: 0.85rem 1rem;
+}
+
+.tm-zero-data-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tm-zero-data-header {
+  font-size: 0.9rem;
+  color: var(--tm-danger-text);
+}
+
+.tm-zero-data-lead {
+  font-size: 0.82rem;
+  color: var(--tm-text-secondary);
+  margin: 0;
+}
+
+.tm-zero-data-list {
+  margin: 0.2rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.82rem;
+  color: var(--tm-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tm-zero-data-udl-notice {
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--tm-surface-subtle);
+  border-left: 3px solid var(--tm-brand-blue);
+  border-radius: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tm-zero-data-udl-text {
+  font-size: 0.8rem;
+  margin: 0;
+  color: var(--tm-text-secondary);
+}
+
+.tm-btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--tm-brand-blue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: left;
+}
+
+.tm-btn-link:hover {
+  opacity: 0.85;
+}
+
+.tm-zero-data-actions {
+  margin-top: 0.35rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.tm-btn-sanitize {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--tm-danger);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.tm-btn-sanitize:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.tm-btn-sanitize:active {
+  transform: translateY(0);
+}
+
+/* UDL Scaffolding Panel */
+.tm-udl-panel {
+  margin: 0.65rem 0.85rem;
+  padding: 0.85rem;
+  background: var(--tm-surface-subtle);
+  border: 1px solid var(--tm-border);
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.tm-udl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tm-udl-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--tm-text);
+}
+
+.tm-udl-close-btn {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--tm-text-muted);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+}
+
+.tm-udl-close-btn:hover {
+  color: var(--tm-text);
+  background: var(--tm-surface-hover);
+}
+
 /* Continuous Three-Panel Workspace (Left Context + Main Canvas + Right Settings) */
 .tm-workspace {
   flex: 1 1 0%;

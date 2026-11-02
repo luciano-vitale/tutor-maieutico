@@ -993,6 +993,126 @@ describe('WorkspaceUI', () => {
     resolveChat('Osserva bene la condizione del ciclo while. Cosa succede al contatore?');
     await new Promise((r) => setTimeout(r, 20));
   });
+
+  test('mostra avviso educativo del guardrail zero-data con pulsante di sanitizzazione assistita, suggerimento UDL per CU-12 e aggiorna il contatore di sicurezza', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const completeChatSpy = vi.spyOn(inference, 'completeChat');
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+
+    await mountWorkspaceUI(root, engine);
+
+    const codeInput = root.querySelector<HTMLTextAreaElement>('#student-code-input')!;
+    const errorInput = root.querySelector<HTMLTextAreaElement>('#compiler-error-input')!;
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const form = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const statCounter = root.querySelector<HTMLElement>('[data-testid="stat-zero-data-interventions"]');
+
+    expect(statCounter?.textContent).toBe('0');
+
+    // 1. Inserisce dati contenenti PII e CU-12
+    codeInput.value = '/* Autore: Mario Rossi, Classe: 3A */\nconst key = "sk-1234567890abcdef12345678";';
+    codeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    errorInput.value = 'errore inviato a mario.rossi@marconihack.edu.it';
+    errorInput.dispatchEvent(new Event('input', { bubbles: true }));
+    preCommitmentInput.value = 'Ho la dislessia e non capisco come mai la struct dia errore.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Tenta l'invio
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    // Verifica che nessuna richiesta di inferenza sia partita in rete
+    expect(completeChatSpy).not.toHaveBeenCalled();
+
+    // Verifica contatore di sicurezza aggiornato
+    expect(statCounter?.textContent).toBe('1');
+
+    // Verifica presenza banner di allerta educativo zero-data
+    const zeroDataAlert = root.querySelector('[data-testid="zero-data-alert"]')!;
+    expect(zeroDataAlert).not.toBeNull();
+    expect(zeroDataAlert.hasAttribute('hidden')).toBe(false);
+    expect(zeroDataAlert.textContent).toMatch(/guardrail zero-data pre-invio/i);
+    expect(zeroDataAlert.textContent).toMatch(/AUP-IA §4\.1|PUIA §4/i);
+    expect(zeroDataAlert.textContent).toMatch(/CU-12/i);
+
+    // Verifica collegamento / suggerimento UDL
+    const udlShortcutBtn = root.querySelector<HTMLButtonElement>('[data-testid="open-udl-scaffolding-btn"]');
+    expect(udlShortcutBtn).not.toBeNull();
+    udlShortcutBtn?.click();
+    const udlPanel = root.querySelector<HTMLElement>('[data-testid="udl-scaffolding-panel"]');
+    expect(udlPanel?.hasAttribute('hidden')).toBe(false);
+
+    // Verifica pulsante di sanitizzazione assistita
+    const sanitizeBtn = root.querySelector<HTMLButtonElement>('[data-testid="sanitize-assisted-btn"]');
+    expect(sanitizeBtn).not.toBeNull();
+    expect(sanitizeBtn?.textContent).toMatch(/Sanitizzazione assistita/i);
+
+    // Clicca sul pulsante di sanitizzazione assistita
+    sanitizeBtn?.click();
+
+    // I campi di input devono essere ripuliti con [DATO RIMOSSO]
+    expect(codeInput.value).toContain('[DATO RIMOSSO]');
+    expect(codeInput.value).not.toContain('Mario Rossi');
+    expect(codeInput.value).not.toContain('sk-1234567890abcdef12345678');
+    expect(errorInput.value).toContain('[DATO RIMOSSO]');
+    expect(errorInput.value).not.toContain('mario.rossi@scuola.it');
+    expect(preCommitmentInput.value).toContain('[DATO RIMOSSO]');
+    expect(preCommitmentInput.value).not.toContain('dislessia');
+
+    // L'avviso viene nascosto dopo la sanitizzazione per consentire la verifica
+    expect(zeroDataAlert.hasAttribute('hidden')).toBe(true);
+
+    // Ora l'invio ha successo verso InferencePort
+    inference.cannedReply = 'Qual è il tipo del membro dichiarato nella struct?';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(completeChatSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('sanitizzazione assistita ripulisce anche il compositore maieutico se la violazione avviene nella risposta socratica', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const completeChatSpy = vi.spyOn(inference, 'completeChat');
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+
+    await mountWorkspaceUI(root, engine);
+
+    const codeInput = root.querySelector<HTMLTextAreaElement>('#student-code-input')!;
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const contextForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    const followupInput = root.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
+    const followupForm = root.querySelector<HTMLFormElement>('#socratic-followup-form')!;
+
+    // Inizializza con un pre-impegno valido
+    preCommitmentInput.value = 'Ho impostato una funzione di test e vorrei capire come passare i parametri.';
+    codeInput.value = 'int test(int a) { return a * 2; }';
+    codeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    contextForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(completeChatSpy).toHaveBeenCalledTimes(1);
+
+    // Lo studente scrive nella chat un messaggio contenente email e CF
+    followupInput.value = 'Mi chiamo mario e la mia email è mario.rossi@gmail.com con CF RSSMRA85M01H501Z';
+    followupInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    followupForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Bloccato prima dell'invio in rete
+    expect(completeChatSpy).toHaveBeenCalledTimes(1);
+
+    const sanitizeBtn = root.querySelector<HTMLButtonElement>('[data-testid="sanitize-assisted-btn"]');
+    expect(sanitizeBtn).not.toBeNull();
+    sanitizeBtn?.click();
+
+    expect(followupInput.value).not.toContain('mario.rossi@gmail.com');
+    expect(followupInput.value).not.toContain('RSSMRA85M01H501Z');
+    expect(followupInput.value).toContain('[DATO RIMOSSO]');
+  });
 });
 
 
