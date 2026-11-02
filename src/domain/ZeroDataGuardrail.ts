@@ -64,20 +64,20 @@ const PATTERN_RULES: PatternRule[] = [
   // Credenziali - Token Bearer
   {
     category: 'credentials',
-    regex: /\bBearer\s+[a-zA-Z0-9_.-]{10,}\b/gi,
+    regex: /\bBearer\s+[a-zA-Z0-9_.-]+\b/gi,
     ruleCitation: 'AUP-IA §6.1',
     description: 'Token di autorizzazione Bearer rilevato',
   },
   // Credenziali - Assegnazioni api_key o password
   {
     category: 'credentials',
-    regex: /\bapi_key\s*[:=]\s*['"]?[a-zA-Z0-9_-]{8,}['"]?/gi,
+    regex: /\bapi_key\s*[:=]\s*(?:['"][^'"]*['"]|[a-zA-Z0-9_-]+)/gi,
     ruleCitation: 'AUP-IA §6.1',
     description: 'Assegnazione di chiave API rilevata',
   },
   {
     category: 'credentials',
-    regex: /\bpassword\s*[:=]\s*['"]?[^\s'"]{4,}['"]?/gi,
+    regex: /\bpassword\s*[:=]\s*(?:['"][^'"]*['"]|[^\s;,]+)/gi,
     ruleCitation: 'AUP-IA §6.1',
     description: 'Assegnazione di password rilevata',
   },

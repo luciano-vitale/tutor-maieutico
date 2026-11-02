@@ -689,14 +689,24 @@ export async function mountWorkspaceUI(
     if (sanitizeBtn) {
       sanitizeBtn.addEventListener('click', () => {
         engine.sanitizeStudentDraft();
+        if (codeInput.value) {
+          codeInput.value = engine.sanitizeText(codeInput.value);
+        }
+        if (errorInput.value) {
+          errorInput.value = engine.sanitizeText(errorInput.value);
+        }
+        if (preCommitmentInput.value) {
+          preCommitmentInput.value = engine.sanitizeText(preCommitmentInput.value);
+        }
         if (followUpInput.value) {
           followUpInput.value = engine.sanitizeText(followUpInput.value);
           autoResizeComposer();
         }
-        const snap = engine.getSnapshot();
-        codeInput.value = snap.studentCode;
-        errorInput.value = snap.compilerError;
-        preCommitmentInput.value = snap.cognitivePreCommitment;
+        engine.updateStudentDraft({
+          studentCode: codeInput.value,
+          compilerError: errorInput.value,
+          cognitivePreCommitment: preCommitmentInput.value,
+        });
 
         showZeroDataAlert(null);
       });

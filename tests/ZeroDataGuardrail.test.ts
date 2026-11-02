@@ -73,6 +73,9 @@ describe('ZeroDataGuardrail', () => {
         'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz',
         'api_key = "segreto_laboratorio_123"',
         'String password = "MiaPasswordSicura123!";',
+        'password = "my secret phrase"',
+        'api_key = "test"',
+        'password = 123',
       ];
 
       for (const sample of samples) {
@@ -80,6 +83,13 @@ describe('ZeroDataGuardrail', () => {
         expect(result.allowed).toBe(false);
         expect(result.categories).toContain('credentials');
       }
+    });
+
+    test('sanitizza completamente assegnazioni di password anche con spazi tra virgolette', () => {
+      const text = 'const pass = "password = \\"super secret text\\"";';
+      const sanitized = sanitizeZeroData(text);
+      expect(sanitized).not.toContain('super secret text');
+      expect(sanitized).toContain('[DATO RIMOSSO]');
     });
   });
 
