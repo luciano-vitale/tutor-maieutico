@@ -111,4 +111,122 @@ describe('markdownRenderer - rendering matematico LaTeX in MathML', () => {
     expect(container.querySelector('script')).toBeNull();
     expect(container.querySelector('img')).toBeNull();
   });
+
+  test('renderizza tabelle Markdown GFM con intestazione, separatore e stili di allineamento senza degradare il DOM', () => {
+    const container = document.createElement('div');
+    const markdown = [
+      'Devi riempire solo i **5 spazi vuoti**. Sono tutti concetti che già conosci:',
+      '',
+      '| Spazio | Domanda guida |',
+      '|:---|:---:|',
+      '| 1° (inizio ciclo) | Da quale valore si parte a cercare divisori? |',
+      '| 2° (fine ciclo, `<`) | Fino a dove vai? Ricorda: **escluso** `n` stesso. |',
+      '| 3° (condizione `if`) | Come dici in Java che `d` divide `n` senza resto? |',
+      '| 4° (`sum += ___`) | Cosa aggiungi alla somma quando la condizione è vera? |',
+      '| 5° (`return ___`) | Quando il numero è perfetto, cosa confronti con `n`? |',
+      '',
+      'Riempi quei 5 spazi e incollali qui.',
+    ].join('\n');
+
+    setRenderedMarkdown(container, markdown);
+
+    const table = container.querySelector('table');
+    expect(table).not.toBeNull();
+    const ths = container.querySelectorAll('th');
+    expect(ths).toHaveLength(2);
+    expect(ths[0].textContent?.trim()).toBe('Spazio');
+    expect(ths[1].textContent?.trim()).toBe('Domanda guida');
+
+    const rows = container.querySelectorAll('tbody tr');
+    expect(rows).toHaveLength(5);
+
+    // Verifica formattazione inline nelle celle (grassetto, codice inline, entità HTML)
+    const secondRowTds = rows[1].querySelectorAll('td');
+    expect(secondRowTds[0].textContent).toContain('<');
+    expect(secondRowTds[1].querySelector('strong')?.textContent).toBe('escluso');
+    expect(secondRowTds[1].querySelector('code')?.textContent).toBe('n');
+
+    // Verifica che l'HTML sicuro conservi il wrapper e non ricada in <p> con pipe
+    const rawHtml = renderMarkdownToSafeHtml(markdown);
+    expect(rawHtml).toContain('<table');
+    expect(rawHtml).toContain('<tbody>');
+  });
+
+  test('renderizza elenchi numerati con spiegazioni multi-riga e interlinee mantenendo un unico tag ol e numerazione coerente', () => {
+    const container = document.createElement('div');
+    const markdown = [
+      'Prima di scrivere il codice, prova a rispondere a queste domande:',
+      '',
+      '1. **Come deve comportarsi il programma con l’input?**  ',
+      '   Deve leggere un numero alla volta e continuare finché non ne ha trovati 3 perfetti?',
+      '',
+      '2. **Come puoi verificare se un numero `n` è perfetto?**  ',
+      '   Per ogni possibile divisore `d`, come riconosci che `d` divide `n`?  ',
+      '   E come accumuli la somma dei divisori propri di `n`?',
+      '',
+      '3. **Quali divisori devi considerare?**  ',
+      '   Devi includere `1`?  ',
+      '   Devi includere `n` stesso?  ',
+      '   Fino a quale valore conviene cercare i divisori?',
+      '',
+      '4. **Come sai quando hai trovato 3 numeri perfetti?**  ',
+      '   Quale variabile ti serve per contare quanti perfetti hai già incontrato?',
+      '',
+      '5. **Cosa succede se l’input contiene numeri non adatti, ad esempio `0`, numeri negativi o `1`?**  ',
+      '   Il problema parla di interi positivi: come vuoi gestire questi casi?',
+      '',
+      '6. **Quando visualizzi i numeri perfetti?**  ',
+      '   Appena li trovi, oppure li conservi e li stampi alla fine?',
+      '',
+      'Un indizio utile: per verificare `n`, puoi sommare tutti i `d` tali che `d < n`.',
+    ].join('\n');
+
+    setRenderedMarkdown(container, markdown);
+
+    const olElements = container.querySelectorAll('ol');
+    expect(olElements).toHaveLength(1);
+
+    const liElements = olElements[0].querySelectorAll('li');
+    expect(liElements).toHaveLength(6);
+
+    // La spiegazione della prima domanda deve essere contenuta nel primo li, non in un paragrafo separato esterno
+    expect(liElements[0].textContent).toContain('Come deve comportarsi il programma con l’input?');
+    expect(liElements[0].textContent).toContain('Deve leggere un numero alla volta');
+
+    // Il paragrafo successivo alla lista non deve far parte dell'elenco
+    expect(container.querySelector('p:last-of-type')?.textContent).toContain('Un indizio utile');
+  });
+
+  test('renderizza il grassetto contenente codice inline o formule matematiche senza spezzare i delimitatori asterisco', () => {
+    const container = document.createElement('div');
+    const markdown = [
+      '2. **Come puoi verificare se un numero `n` è perfetto?**',
+      '5. **Cosa succede se l’input contiene numeri non adatti, ad esempio `0`, numeri negativi o `1`?**',
+      'Formula: **Calcola $x^2 + 1$ adesso** con attenzione.',
+    ].join('\n');
+
+    setRenderedMarkdown(container, markdown);
+
+    const strongs = container.querySelectorAll('strong');
+    expect(strongs.length).toBeGreaterThanOrEqual(3);
+
+    // Il tag strong deve contenere il codice inline
+    expect(strongs[0].querySelector('code')?.textContent).toBe('n');
+    expect(strongs[0].textContent).toContain('Come puoi verificare se un numero');
+    expect(strongs[0].textContent).toContain('è perfetto?');
+
+    // Il tag strong della voce 5 deve racchiudere i codici `0` e `1`
+    const codeInStrong1 = strongs[1].querySelectorAll('code');
+    expect(codeInStrong1).toHaveLength(2);
+    expect(codeInStrong1[0].textContent).toBe('0');
+    expect(codeInStrong1[1].textContent).toBe('1');
+
+    // Nessun asterisco grezzo residuo
+    expect(container.textContent).not.toContain('**');
+
+    // Verifica formula matematica dentro strong
+    expect(strongs[2].querySelector('math')).not.toBeNull();
+    expect(strongs[2].textContent).toContain('Calcola');
+    expect(strongs[2].textContent).toContain('adesso');
+  });
 });

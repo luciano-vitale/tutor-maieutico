@@ -18,6 +18,12 @@ const ALLOWED_MARKDOWN_ELEMENTS = [
   'blockquote',
   'div',
   'span',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td',
   'math',
   'mrow',
   'mi',
@@ -41,6 +47,9 @@ const ALLOWED_MARKDOWN_ELEMENTS = [
 
 const ALLOWED_MARKDOWN_ATTRIBUTES = [
   'class',
+  'style',
+  'align',
+  'start',
   'xmlns',
   'display',
   'mathvariant',
@@ -851,51 +860,133 @@ function consumeBareStructuralMacro(
   return null;
 }
 
-function formatTextWithMath(rawSegment: string): string {
-  const result: string[] = [];
+function splitTableCells(line: string): string[] {
+  let trimmed = line.trim();
+  if (trimmed.startsWith('|')) {
+    trimmed = trimmed.slice(1);
+  }
+  if (trimmed.endsWith('|') && !trimmed.endsWith('\\|')) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  const cells: string[] = [];
+  let cur = '';
+  for (let j = 0; j < trimmed.length; j++) {
+    if (trimmed[j] === '\\' && j + 1 < trimmed.length && trimmed[j + 1] === '|') {
+      cur += '|';
+      j++;
+    } else if (trimmed[j] === '|') {
+      cells.push(cur.trim());
+      cur = '';
+    } else {
+      cur += trimmed[j];
+    }
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+function isTableDelimiterRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes('-') || !trimmed.includes('|')) {
+    return false;
+  }
+  const cells = splitTableCells(trimmed);
+  if (cells.length === 0) {
+    return false;
+  }
+  return cells.every((cell) => /^\s*:?-{1,}:?\s*$/.test(cell));
+}
+
+function parseTableAlignments(delimiterLine: string): ('left' | 'center' | 'right' | null)[] {
+  const cells = splitTableCells(delimiterLine);
+  return cells.map((cell) => {
+    const trimmed = cell.trim();
+    const starts = trimmed.startsWith(':');
+    const ends = trimmed.endsWith(':');
+    if (starts && ends) return 'center';
+    if (ends) return 'right';
+    if (starts) return 'left';
+    return null;
+  });
+}
+
+export function formatInlineMarkdown(line: string): string {
+  if (!line) {
+    return '';
+  }
+
+  const tokens: { placeholder: string; html: string }[] = [];
+
+  // 1. Estrai codice inline `...` (conservando sintassi letterale interna)
+  const withCodeTokens = line.replace(/`([^`]+)`/g, (_match, codeContent) => {
+    const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+    tokens.push({
+      placeholder,
+      html: `<code class="tm-md-inline-code">${escapeHtml(codeContent)}</code>`,
+    });
+    return placeholder;
+  });
+
+  // 2. Estrai formule matematiche inline o a blocco su riga singola
+  let withMathTokens = '';
   let i = 0;
 
-  while (i < rawSegment.length) {
-    // 0a. Delimitatore a blocco su riga singola \[ ... \]
-    if (rawSegment.startsWith('\\[', i)) {
-      const closeIdx = rawSegment.indexOf('\\]', i + 2);
-      const latex = closeIdx !== -1 ? rawSegment.slice(i + 2, closeIdx) : rawSegment.slice(i + 2);
-      result.push(renderMathElement(latex, 'block'));
-      i = closeIdx !== -1 ? closeIdx + 2 : rawSegment.length;
-      continue;
-    }
-
-    // 0b. Delimitatore a blocco su riga singola $$ ... $$
-    if (rawSegment.startsWith('$$', i)) {
-      const closeIdx = rawSegment.indexOf('$$', i + 2);
-      const latex = closeIdx !== -1 ? rawSegment.slice(i + 2, closeIdx) : rawSegment.slice(i + 2);
-      if (latex.trim().length > 0) {
-        result.push(renderMathElement(latex, 'block'));
-        i = closeIdx !== -1 ? closeIdx + 2 : rawSegment.length;
+  while (i < withCodeTokens.length) {
+    // Se incontriamo un segnaposto già inserito per il codice, saltalo intatto
+    if (withCodeTokens.startsWith('\uE000TM_TK_', i)) {
+      const endPlaceholder = withCodeTokens.indexOf('\uE000', i + 1);
+      if (endPlaceholder !== -1) {
+        withMathTokens += withCodeTokens.slice(i, endPlaceholder + 1);
+        i = endPlaceholder + 1;
         continue;
       }
     }
 
-    // 1. Delimitatore inline \( ... \)
-    if (rawSegment.startsWith('\\(', i)) {
-      const closeIdx = rawSegment.indexOf('\\)', i + 2);
+    // 2a. Delimitatore a blocco su riga singola \[ ... \]
+    if (withCodeTokens.startsWith('\\[', i)) {
+      const closeIdx = withCodeTokens.indexOf('\\]', i + 2);
+      const latex = closeIdx !== -1 ? withCodeTokens.slice(i + 2, closeIdx) : withCodeTokens.slice(i + 2);
+      const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+      tokens.push({ placeholder, html: renderMathElement(latex, 'block') });
+      withMathTokens += placeholder;
+      i = closeIdx !== -1 ? closeIdx + 2 : withCodeTokens.length;
+      continue;
+    }
+
+    // 2b. Delimitatore a blocco su riga singola $$ ... $$
+    if (withCodeTokens.startsWith('$$', i)) {
+      const closeIdx = withCodeTokens.indexOf('$$', i + 2);
+      const latex = closeIdx !== -1 ? withCodeTokens.slice(i + 2, closeIdx) : withCodeTokens.slice(i + 2);
+      if (latex.trim().length > 0) {
+        const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+        tokens.push({ placeholder, html: renderMathElement(latex, 'block') });
+        withMathTokens += placeholder;
+        i = closeIdx !== -1 ? closeIdx + 2 : withCodeTokens.length;
+        continue;
+      }
+    }
+
+    // 2c. Delimitatore inline \( ... \)
+    if (withCodeTokens.startsWith('\\(', i)) {
+      const closeIdx = withCodeTokens.indexOf('\\)', i + 2);
       if (closeIdx !== -1) {
-        const latex = rawSegment.slice(i + 2, closeIdx);
-        result.push(renderMathElement(latex, 'inline'));
+        const latex = withCodeTokens.slice(i + 2, closeIdx);
+        const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+        tokens.push({ placeholder, html: renderMathElement(latex, 'inline') });
+        withMathTokens += placeholder;
         i = closeIdx + 2;
         continue;
       }
     }
 
-    // 2. Delimitatore inline $ ... $ (non $$)
-    if (rawSegment[i] === '$' && rawSegment[i + 1] !== '$') {
-      // Cerca un $ di chiusura valido (non seguito immediatamente da cifra)
+    // 2d. Delimitatore inline $ ... $ (non $$)
+    if (withCodeTokens[i] === '$' && withCodeTokens[i + 1] !== '$') {
       let closeIdx = -1;
       let searchFrom = i + 1;
-      while (searchFrom < rawSegment.length) {
-        const candidate = rawSegment.indexOf('$', searchFrom);
+      while (searchFrom < withCodeTokens.length) {
+        const candidate = withCodeTokens.indexOf('$', searchFrom);
         if (candidate === -1) break;
-        if (rawSegment[candidate - 1] !== '\\') {
+        if (withCodeTokens[candidate - 1] !== '\\') {
           closeIdx = candidate;
           break;
         }
@@ -903,91 +994,73 @@ function formatTextWithMath(rawSegment: string): string {
       }
 
       if (closeIdx !== -1) {
-        const candidateLatex = rawSegment.slice(i + 1, closeIdx);
-        if (!/^\s|\s$/.test(candidateLatex) && isLikelyInlineMathContent(candidateLatex)) {
-          result.push(renderMathElement(candidateLatex, 'inline'));
+        const candidateLatex = withCodeTokens.slice(i + 1, closeIdx);
+        if (
+          !candidateLatex.includes('\uE000') &&
+          !/^\s|\s$/.test(candidateLatex) &&
+          isLikelyInlineMathContent(candidateLatex)
+        ) {
+          const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+          tokens.push({ placeholder, html: renderMathElement(candidateLatex, 'inline') });
+          withMathTokens += placeholder;
           i = closeIdx + 1;
           continue;
         }
       }
 
-      // Se non c'è un $ di chiusura valido, controlla se è una formula LaTeX tronca (es. $\frac{28}{2})
-      const unclosed = consumeUnclosedDollarMath(rawSegment, i);
-      if (unclosed) {
-        result.push(renderMathElement(unclosed.latex, 'inline'));
+      const unclosed = consumeUnclosedDollarMath(withCodeTokens, i);
+      if (unclosed && !unclosed.latex.includes('\uE000')) {
+        const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+        tokens.push({ placeholder, html: renderMathElement(unclosed.latex, 'inline') });
+        withMathTokens += placeholder;
         i = unclosed.nextIndex;
         continue;
       }
     }
 
-    // 3. Macro strutturale nuda senza $ (es. \frac{28}{2}, \sqrt{16}, \mathcal{O}(n^2))
-    if (rawSegment[i] === '\\') {
-      const bare = consumeBareStructuralMacro(rawSegment, i);
-      if (bare) {
-        result.push(renderMathElement(bare.latex, 'inline'));
+    // 2e. Macro strutturale nuda senza $ (es. \frac{28}{2}, \sqrt{16}, \mathcal{O}(n^2))
+    if (withCodeTokens[i] === '\\') {
+      const bare = consumeBareStructuralMacro(withCodeTokens, i);
+      if (bare && !bare.latex.includes('\uE000')) {
+        const placeholder = `\uE000TM_TK_${tokens.length}\uE000`;
+        tokens.push({ placeholder, html: renderMathElement(bare.latex, 'inline') });
+        withMathTokens += placeholder;
         i = bare.nextIndex;
         continue;
       }
     }
 
-    // Consuma testo ordinario fino al prossimo potenziale delimitatore matematico
-    let nextSpecial = i + 1;
-    while (
-      nextSpecial < rawSegment.length &&
-      rawSegment[nextSpecial] !== '$' &&
-      rawSegment[nextSpecial] !== '\\'
-    ) {
-      nextSpecial++;
-    }
-    result.push(formatTextSegment(rawSegment.slice(i, nextSpecial)));
-    i = nextSpecial;
+    withMathTokens += withCodeTokens[i];
+    i++;
   }
 
-  return result.join('');
-}
+  // 3. Esegui escape HTML sul testo (i token protetti \uE000TM_TK_n\uE000 non contengono caratteri da escapare)
+  let formatted = escapeHtml(withMathTokens);
 
-function formatTextSegment(rawSegment: string): string {
-  let text = escapeHtml(rawSegment);
-
+  // 4. Formattazione grassetto e corsivo
   // Grassetto + corsivo (***testo***)
-  text = text.replace(/\*\*\*(?!\s)(.+?)(?<!\s)\*\*\*/g, '<strong><em>$1</em></strong>');
+  formatted = formatted.replace(/\*\*\*(?!\s)(.+?)(?<!\s)\*\*\*/g, '<strong><em>$1</em></strong>');
 
   // Grassetto (**testo** o __testo__)
-  text = text.replace(/\*\*(?!\s)(.+?)(?<!\s)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(
+  formatted = formatted.replace(/\*\*(?!\s)(.+?)(?<!\s)\*\*/g, '<strong>$1</strong>');
+  formatted = formatted.replace(
     /(?<![\p{L}\p{N}_])__(?!\s)(.+?)(?<!\s)__(?![\p{L}\p{N}_])/gu,
     '<strong>$1</strong>'
   );
 
   // Corsivo (*testo* o _testo_ fuori da identificatori snake_case)
-  text = text.replace(/(?<!\*)\*(?!\s|\*)([^*]+?)(?<!\s|\*)\*(?!\*)/g, '<em>$1</em>');
-  text = text.replace(
+  formatted = formatted.replace(/(?<!\*)\*(?!\s|\*)([^*]+?)(?<!\s|\*)\*(?!\*)/g, '<em>$1</em>');
+  formatted = formatted.replace(
     /(?<![\p{L}\p{N}_])_(?!\s|_)([^_]+?)(?<!\s|_)_(?![\p{L}\p{N}_])/gu,
     '<em>$1</em>'
   );
 
-  return text;
-}
-
-export function formatInlineMarkdown(line: string): string {
-  const parts: string[] = [];
-  const inlineCodeRegex = /`([^`]+)`/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = inlineCodeRegex.exec(line)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(formatTextWithMath(line.slice(lastIndex, match.index)));
-    }
-    parts.push(`<code class="tm-md-inline-code">${escapeHtml(match[1])}</code>`);
-    lastIndex = match.index + match[0].length;
+  // 5. Ripristina tutti i token protetti
+  for (const token of tokens) {
+    formatted = formatted.replaceAll(token.placeholder, token.html);
   }
 
-  if (lastIndex < line.length) {
-    parts.push(formatTextWithMath(line.slice(lastIndex)));
-  }
-
-  return parts.join('');
+  return formatted;
 }
 
 export function renderMarkdownToSafeHtml(markdown: string): string {
@@ -1083,7 +1156,48 @@ export function renderMarkdownToSafeHtml(markdown: string): string {
       continue;
     }
 
-    // 6. Citazioni (>)
+    // 6. Tabelle GFM (| col | col | seguito da riga separatore |---|---|)
+    if (line.includes('|') && i + 1 < lines.length && isTableDelimiterRow(lines[i + 1])) {
+      const headerLine = line;
+      const delimiterLine = lines[i + 1];
+      const alignments = parseTableAlignments(delimiterLine);
+      const headerCells = splitTableCells(headerLine);
+
+      const tableRows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim().length > 0 && lines[i].includes('|')) {
+        tableRows.push(splitTableCells(lines[i]));
+        i++;
+      }
+
+      const theadHtml = `<thead><tr>${headerCells
+        .map((cell, idx) => {
+          const align = alignments[idx];
+          const style = align ? ` style="text-align: ${align};"` : '';
+          return `<th${style}>${formatInlineMarkdown(cell)}</th>`;
+        })
+        .join('')}</tr></thead>`;
+
+      const tbodyHtml = `<tbody>${tableRows
+        .map((row) => {
+          const rowHtml = row
+            .map((cell, idx) => {
+              const align = alignments[idx];
+              const style = align ? ` style="text-align: ${align};"` : '';
+              return `<td${style}>${formatInlineMarkdown(cell)}</td>`;
+            })
+            .join('');
+          return `<tr>${rowHtml}</tr>`;
+        })
+        .join('')}</tbody>`;
+
+      blocks.push(
+        `<div class="tm-table-wrapper"><table class="tm-md-table">${theadHtml}${tbodyHtml}</table></div>`
+      );
+      continue;
+    }
+
+    // 7. Citazioni (>)
     if (/^\s*>\s?/.test(line)) {
       const quoteLines: string[] = [];
       while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
@@ -1096,27 +1210,90 @@ export function renderMarkdownToSafeHtml(markdown: string): string {
       continue;
     }
 
-    // 7. Elenchi puntati (- o *)
-    if (/^\s*[-*]\s+.+$/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\s*[-*]\s+.+$/.test(lines[i])) {
-        const itemText = lines[i].replace(/^\s*[-*]\s+/, '');
-        items.push(`<li>${formatInlineMarkdown(itemText)}</li>`);
-        i++;
-      }
-      blocks.push(`<ul>${items.join('')}</ul>`);
-      continue;
-    }
+    // 8. Elenchi puntati o numerati (con supporto a voci multi-riga e sequenze con interlinee)
+    const orderedMatch = line.match(/^\s*(\d+)[.)]\s+(.*)$/);
+    const unorderedMatch = !orderedMatch ? line.match(/^\s*([-*+])\s+(.*)$/) : null;
 
-    // 8. Elenchi numerati (1. o 1))
-    if (/^\s*\d+[.)]\s+.+$/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\s*\d+[.)]\s+.+$/.test(lines[i])) {
-        const itemText = lines[i].replace(/^\s*\d+[.)]\s+/, '');
-        items.push(`<li>${formatInlineMarkdown(itemText)}</li>`);
+    if (orderedMatch || unorderedMatch) {
+      const isOrdered = !!orderedMatch;
+      const startNum = orderedMatch ? parseInt(orderedMatch[1], 10) : 1;
+      const items: string[][] = [];
+
+      items.push([orderedMatch ? orderedMatch[2] : unorderedMatch![2]]);
+      i++;
+
+      while (i < lines.length) {
+        const curLine = lines[i];
+
+        // Se riga vuota, guarda avanti per verificare se l'elenco prosegue
+        if (curLine.trim().length === 0) {
+          let nextIdx = i + 1;
+          while (nextIdx < lines.length && lines[nextIdx].trim().length === 0) {
+            nextIdx++;
+          }
+          if (nextIdx >= lines.length) {
+            i = nextIdx;
+            break;
+          }
+
+          const nextLine = lines[nextIdx];
+          const nextIsItem = isOrdered
+            ? /^\s*\d+[.)]\s+/.test(nextLine)
+            : /^\s*[-*+]\s+/.test(nextLine);
+          const nextIsContinuation = /^\s{2,}\S/.test(nextLine);
+
+          if (nextIsItem || nextIsContinuation) {
+            i = nextIdx;
+            continue;
+          } else {
+            break;
+          }
+        }
+
+        // Verifica se inizia una nuova voce dell'elenco
+        const itemMatch = isOrdered
+          ? curLine.match(/^\s*\d+[.)]\s+(.*)$/)
+          : curLine.match(/^\s*[-*+]\s+(.*)$/);
+
+        if (itemMatch) {
+          items.push([itemMatch[1]]);
+          i++;
+          continue;
+        }
+
+        // Verifica se inizia un blocco strutturale che interrompe l'elenco
+        if (
+          /^\s*```/.test(curLine) ||
+          /^\s*(\$\$|\\\[)/.test(curLine) ||
+          /^\s*(?:[-]{3,}|[*]{3,}|[_]{3,})\s*$/.test(curLine) ||
+          /^\s*#{1,6}\s+/.test(curLine) ||
+          /^\s*>\s?/.test(curLine) ||
+          (isOrdered && /^\s*[-*+]\s+/.test(curLine)) ||
+          (!isOrdered && /^\s*\d+[.)]\s+/.test(curLine)) ||
+          (curLine.includes('|') && i + 1 < lines.length && isTableDelimiterRow(lines[i + 1]))
+        ) {
+          break;
+        }
+
+        // Riga di continuazione dell'elemento corrente
+        const trimmedContinuation = curLine.replace(/^\s{1,4}/, '');
+        items[items.length - 1].push(trimmedContinuation);
         i++;
       }
-      blocks.push(`<ol>${items.join('')}</ol>`);
+
+      const renderedItems = items.map((itemLines) => {
+        const itemHtml = itemLines
+          .map((l) => formatInlineMarkdown(l.trim()))
+          .join('<br />');
+        return `<li>${itemHtml}</li>`;
+      });
+
+      if (isOrdered) {
+        const startAttr = startNum !== 1 ? ` start="${startNum}"` : '';
+        blocks.push(`<ol${startAttr}>${renderedItems.join('')}</ol>`);
+      } else {
+        blocks.push(`<ul>${renderedItems.join('')}</ul>`);
+      }
       continue;
     }
 
@@ -1130,8 +1307,9 @@ export function renderMarkdownToSafeHtml(markdown: string): string {
       !/^\s*(?:[-]{3,}|[*]{3,}|[_]{3,})\s*$/.test(lines[i]) &&
       !/^\s*#{1,6}\s+/.test(lines[i]) &&
       !/^\s*>\s?/.test(lines[i]) &&
-      !/^\s*[-*]\s+.+$/.test(lines[i]) &&
-      !/^\s*\d+[.)]\s+.+$/.test(lines[i])
+      !/^\s*[-*+]\s+.+$/.test(lines[i]) &&
+      !/^\s*\d+[.)]\s+.+$/.test(lines[i]) &&
+      !(lines[i].includes('|') && i + 1 < lines.length && isTableDelimiterRow(lines[i + 1]))
     ) {
       paragraphLines.push(formatInlineMarkdown(lines[i]));
       i++;

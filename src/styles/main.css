@@ -730,10 +730,16 @@ body {
   margin: 0 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
   padding: 0.5rem 0.25rem 1.5rem;
+}
+
+.tm-dialogue-list::-webkit-scrollbar {
+  display: none;
 }
 
 .tm-empty-state {
@@ -969,6 +975,47 @@ body {
   margin: 0.75rem 0;
 }
 
+.tm-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0.65rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tm-turn-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  text-align: left;
+  border-spacing: 0;
+  margin: 0;
+}
+
+.tm-turn-body th,
+.tm-turn-body td {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--tm-border);
+  vertical-align: middle;
+}
+
+.tm-turn-body th {
+  background: var(--tm-surface-subtle);
+  font-weight: 600;
+  color: var(--tm-text);
+}
+
+.tm-turn-body tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+:root[data-theme="dark"] .tm-turn-body tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tm-turn-student .tm-turn-body th {
+  background: var(--tm-input-bg);
+}
+
 .tm-turn-body math {
   font-family: Latin Modern Math, STIX Two Math, Cambria Math, KaTeX_Main, serif;
   font-size: 1.05em;
@@ -1060,8 +1107,9 @@ body {
   }
 }
 
-/* Centered Floating Pill Composer & Footnote */
+/* Centered Floating Pill Composer, Scroll-to-Bottom Fab & Footnote */
 .tm-composer-dock {
+  position: relative;
   flex-shrink: 0;
   width: 100%;
   max-width: 48rem;
@@ -1071,6 +1119,47 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+}
+
+.tm-scroll-bottom-fab {
+  position: absolute;
+  top: -2.85rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--tm-composer-bg);
+  color: var(--tm-text);
+  border: 1px solid var(--tm-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  padding: 0;
+  transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tm-scroll-bottom-fab:hover {
+  background: var(--tm-surface-hover);
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.tm-scroll-bottom-fab:active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.tm-scroll-bottom-fab[hidden] {
+  display: none !important;
+}
+
+.tm-scroll-bottom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tm-composer {
@@ -1328,7 +1417,8 @@ body {
   .tm-turn-student,
   .tm-composer,
   .tm-btn-cta,
-  .tm-send-fab {
+  .tm-send-fab,
+  .tm-scroll-bottom-fab {
     border: 1px solid CanvasText;
   }
 }

@@ -909,6 +909,90 @@ describe('WorkspaceUI', () => {
     expect(statContextEl.textContent).toBe('0 token');
     expect(statSpeedEl.textContent).toBe('—');
   });
+
+  test('permette di scorrere verso l\'alto durante lo streaming senza forzare la vista al fondo, mostra il pulsante freccia e lo nasconde al clic o al raggiungimento del fondo', async () => {
+    let streamCallbacks: any = {};
+    let resolveChat: any = null;
+
+    const inference = new FakeInferencePort();
+    inference.completeChat = vi.fn().mockImplementation((_messages, opts) => {
+      streamCallbacks = opts ?? {};
+      return new Promise<string>((resolve) => {
+        resolveChat = resolve;
+      });
+    });
+
+    const root = document.getElementById('app')!;
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const scrollToBottomBtn = root.querySelector<HTMLButtonElement>(
+      '[data-testid="scroll-to-bottom-btn"]'
+    );
+    expect(scrollToBottomBtn).not.toBeNull();
+    expect(scrollToBottomBtn?.hidden).toBe(true);
+    expect(scrollToBottomBtn?.getAttribute('aria-label')).toBe('Scorri verso il basso');
+
+    const dialogueList = root.querySelector<HTMLElement>(
+      '[data-testid="dialogue-turns-list"]'
+    )!;
+
+    // Configura dimensioni simulate su dialogueList
+    let currentScrollTop = 0;
+    Object.defineProperty(dialogueList, 'scrollHeight', {
+      configurable: true,
+      get: () => 1000,
+    });
+    Object.defineProperty(dialogueList, 'clientHeight', {
+      configurable: true,
+      get: () => 400,
+    });
+    Object.defineProperty(dialogueList, 'scrollTop', {
+      configurable: true,
+      get: () => currentScrollTop,
+      set: (val: number) => {
+        currentScrollTop = val;
+      },
+    });
+    dialogueList.scrollTo = vi.fn((opts: any) => {
+      currentScrollTop = opts?.top ?? 1000;
+    });
+
+    // Avvio intervento maieutico
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    const contextForm = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    preCommitmentInput.value = 'Ho un dubbio sul ciclo while e la condizione di uscita.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    contextForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    // Durante il primo token, siamo a fondo corsa (currentScrollTop = 600, scrollHeight - clientHeight = 600)
+    currentScrollTop = 600;
+    streamCallbacks.onToken?.('Osserva bene ');
+    expect(scrollToBottomBtn?.hidden).toBe(true);
+
+    // Lo studente scorre verso l'alto (es. scrollTop = 100, distanceFromBottom = 1000 - 100 - 400 = 500 > 48)
+    currentScrollTop = 100;
+    dialogueList.dispatchEvent(new Event('scroll'));
+
+    // Il pulsante con freccia verso il basso deve apparire
+    expect(scrollToBottomBtn?.hidden).toBe(false);
+
+    // Arrivano ulteriori token dallo stream: scrollTop NON deve essere forzato a fondo corsa
+    streamCallbacks.onToken?.('la condizione del ciclo while.');
+    expect(currentScrollTop).toBe(100);
+
+    // Clic sul pulsante freccia: scroll verso il fondo e scomparsa del pulsante
+    scrollToBottomBtn?.click();
+    expect(scrollToBottomBtn?.hidden).toBe(true);
+    expect(currentScrollTop).toBe(1000);
+
+    // Ulteriori token ora scrollano normalmente a fondo corsa
+    streamCallbacks.onToken?.(' Cosa succede al contatore?');
+    expect(currentScrollTop).toBe(1000);
+
+    resolveChat('Osserva bene la condizione del ciclo while. Cosa succede al contatore?');
+    await new Promise((r) => setTimeout(r, 20));
+  });
 });
 
 

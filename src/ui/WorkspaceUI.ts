@@ -24,6 +24,7 @@ const ICONS = {
   checkCopied: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`,
   spinner: `<svg class="tm-spin" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
   stopSquare: `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>`,
+  arrowDown: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`,
 };
 
 const IT_INTEGER_FORMATTER = new Intl.NumberFormat('it-IT', {
@@ -253,6 +254,17 @@ export async function mountWorkspaceUI(
           ></div>
 
           <div class="tm-composer-dock">
+            <button
+              type="button"
+              id="scroll-to-bottom-btn"
+              class="tm-scroll-bottom-fab"
+              data-testid="scroll-to-bottom-btn"
+              data-tooltip="Scorri verso il basso"
+              aria-label="Scorri verso il basso"
+              hidden
+            >
+              <span class="tm-scroll-bottom-icon">${ICONS.arrowDown}</span>
+            </button>
             <form id="socratic-followup-form" class="tm-composer" novalidate>
               <label for="socratic-reply-input" class="tm-sr-only">
                 Chiedi a StudIA o rispondi alla domanda socratica
@@ -458,6 +470,9 @@ export async function mountWorkspaceUI(
   const preCommitmentInput = container.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
 
   const dialogueList = container.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
+  const scrollToBottomBtn = container.querySelector<HTMLButtonElement>(
+    '[data-testid="scroll-to-bottom-btn"]'
+  );
   const followUpForm = container.querySelector<HTMLFormElement>('#socratic-followup-form')!;
   const followUpInput = container.querySelector<HTMLTextAreaElement>('#socratic-reply-input')!;
   const sendFollowUpBtn = container.querySelector<HTMLButtonElement>('[data-testid="send-followup-btn"]')!;
@@ -465,6 +480,7 @@ export async function mountWorkspaceUI(
 
   let isGenerating = false;
   let isDevMode = false;
+  let isUserScrolledUp = false;
 
   const updateDevMode = (): void => {
     isDevMode = devModeToggle.checked;
@@ -583,11 +599,55 @@ export async function mountWorkspaceUI(
     }
   }
 
-  function scrollToLatest(): void {
+  function updateScrollState(): void {
+    const threshold = 48;
+    const distanceFromBottom =
+      dialogueList.scrollHeight - dialogueList.scrollTop - dialogueList.clientHeight;
+    const scrolledUp = distanceFromBottom > threshold;
+
+    isUserScrolledUp = scrolledUp;
+    if (scrollToBottomBtn) {
+      scrollToBottomBtn.hidden = !scrolledUp;
+    }
+  }
+
+  dialogueList.addEventListener('scroll', updateScrollState, { passive: true });
+
+  if (scrollToBottomBtn) {
+    scrollToBottomBtn.addEventListener('click', () => {
+      isUserScrolledUp = false;
+      scrollToBottomBtn.hidden = true;
+      if (typeof dialogueList.scrollTo === 'function') {
+        try {
+          dialogueList.scrollTo({
+            top: dialogueList.scrollHeight,
+            behavior: 'smooth',
+          });
+        } catch {
+          dialogueList.scrollTop = dialogueList.scrollHeight;
+        }
+      } else {
+        dialogueList.scrollTop = dialogueList.scrollHeight;
+      }
+    });
+  }
+
+  function scrollToLatest(force = false): void {
+    if (isUserScrolledUp && !force) {
+      return;
+    }
+    if (force) {
+      isUserScrolledUp = false;
+      if (scrollToBottomBtn) {
+        scrollToBottomBtn.hidden = true;
+      }
+    }
     dialogueList.scrollTop = dialogueList.scrollHeight;
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
-        dialogueList.scrollTop = dialogueList.scrollHeight;
+        if (!isUserScrolledUp || force) {
+          dialogueList.scrollTop = dialogueList.scrollHeight;
+        }
       });
     }
   }
@@ -803,7 +863,7 @@ export async function mountWorkspaceUI(
       }
     });
 
-    scrollToLatest();
+    scrollToLatest(true);
   }
 
   codeInput.addEventListener('input', () => {
@@ -911,7 +971,7 @@ export async function mountWorkspaceUI(
 
     // Se il pre-impegno cognitivo è valido, il turno studente è già stato aggiunto sincronamente in RAM
     const activePendingTutor = ensureInitialPendingDOM();
-    scrollToLatest();
+    scrollToLatest(true);
 
     const result = await requestPromise;
     setGeneratingState(false);
@@ -956,7 +1016,7 @@ export async function mountWorkspaceUI(
         preCommitmentInput.focus();
         const len = preCommitmentInput.value.length;
         preCommitmentInput.setSelectionRange(len, len);
-        scrollToLatest();
+        scrollToLatest(true);
         return false;
       }
 
@@ -1081,6 +1141,10 @@ export async function mountWorkspaceUI(
   });
 
   newSessionBtn.addEventListener('click', () => {
+    isUserScrolledUp = false;
+    if (scrollToBottomBtn) {
+      scrollToBottomBtn.hidden = true;
+    }
     engine.resetSession();
     codeInput.value = '';
     errorInput.value = '';
