@@ -89,6 +89,7 @@ export interface DialogueTurn {
   reasoning?: string;
   timestampIso: string;
   antiSolutionIntervened?: boolean;
+  stage?: MaieuticStage;
 }
 
 export interface StudentDraft {
@@ -558,6 +559,7 @@ export class MaieuticSessionEngine {
         this.turns.push({
           role: 'tutor',
           content: pedagogicalMessage,
+          stage: this.currentStage,
           timestampIso: this.environmentPort.nowIso(),
         });
       }
@@ -746,6 +748,7 @@ export class MaieuticSessionEngine {
           role: 'tutor',
           content: finalContent,
           ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
+          stage: this.currentStage,
           timestampIso: this.environmentPort.nowIso(),
         });
 
@@ -762,6 +765,7 @@ export class MaieuticSessionEngine {
         content: safeContent,
         ...(antiSolutionRes.intercepted ? { antiSolutionIntervened: true } : {}),
         ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
+        stage: this.currentStage,
         timestampIso: this.environmentPort.nowIso(),
       });
       this.connectionStatus = 'online';
@@ -787,6 +791,7 @@ export class MaieuticSessionEngine {
           role: 'tutor',
           content: finalContent,
           ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
+          stage: this.currentStage,
           timestampIso: this.environmentPort.nowIso(),
         });
 

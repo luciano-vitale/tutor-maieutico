@@ -12,6 +12,11 @@ _Avoid_: Coding assistant risolutivo, generatore di codice, correttore automatic
 La singola risposta prodotta dal tutor maieutico a fronte di un quesito o di un frammento di codice dello studente, strutturata per stimolare il ragionamento tramite domande guida, indizi graduali o analogie astratte.
 _Avoid_: Soluzione, correzione, risposta pronta, completamento di codice
 
+**Barra delle azioni dell'intervento**:
+La barra di strumenti orizzontale minimalista collocata ai piedi di ciascun intervento maieutico del tutor che integra l'indicatore dello stadio della progressione maieutica con tooltip esplicativa, il comando rapido per segnalare la persistenza del blocco cognitivo, il pulsante di copia dell'intervento negli appunti e il comando per azzerare la progressione allo Stadio 1 all'avvio di un nuovo punto didattico.
+_Avoid_: Barra di feedback generica, controlli chat standard, pulsanti di gradimento social
+
+
 **Risposta socratica**:
 La replica formulata dallo studente durante il dialogo per rispondere alle domande guida del tutor o approfondire la propria comprensione concettuale.
 _Avoid_: Prompt libero, richiesta di codice, query generica

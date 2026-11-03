@@ -28,6 +28,8 @@ const ICONS = {
   sendArrow: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>`,
   copyTurn: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
   checkCopied: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`,
+  lifeBuoy: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg>`,
+  resetStage: `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`,
   spinner: `<svg class="tm-spin" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
   stopSquare: `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>`,
   arrowDown: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`,
@@ -303,7 +305,8 @@ export async function mountWorkspaceUI(
                   role="radio"
                   aria-checked="false"
                 >
-                  1 • concettuale
+                  <span class="tm-aup-level-num">1</span>
+                  <span class="tm-aup-level-text">concettuale</span>
                 </button>
                 <button
                   type="button"
@@ -313,7 +316,8 @@ export async function mountWorkspaceUI(
                   role="radio"
                   aria-checked="true"
                 >
-                  2 • revisione
+                  <span class="tm-aup-level-num">2</span>
+                  <span class="tm-aup-level-text">revisione</span>
                 </button>
                 <button
                   type="button"
@@ -323,7 +327,8 @@ export async function mountWorkspaceUI(
                   role="radio"
                   aria-checked="false"
                 >
-                  3 • debugging
+                  <span class="tm-aup-level-num">3</span>
+                  <span class="tm-aup-level-text">debugging</span>
                 </button>
               </div>
             </div>
@@ -429,44 +434,6 @@ export async function mountWorkspaceUI(
           <h2 id="right-panel-heading" class="tm-sr-only">
             Dialogo maieutico
           </h2>
-
-          <div class="tm-stage-bar">
-            <div
-              class="tm-stage-indicator"
-              data-testid="maieutic-stage-indicator"
-              data-active-stage="1"
-              role="status"
-              aria-label="Progressione maieutica a 4 stadi"
-            >
-              <div class="tm-stage-pills" aria-hidden="true">
-                <span class="tm-stage-pill tm-stage-active" data-stage="1">1</span>
-                <span class="tm-stage-pill" data-stage="2">2</span>
-                <span class="tm-stage-pill" data-stage="3">3</span>
-                <span class="tm-stage-pill" data-stage="4">4</span>
-              </div>
-              <span class="tm-stage-current-label">Stadio 1 (domanda esplorativa)</span>
-            </div>
-            <div class="tm-stage-actions">
-              <button
-                type="button"
-                class="tm-stage-btn tm-still-stuck-btn"
-                data-testid="still-stuck-btn"
-                data-tooltip="Avanza allo stadio successivo se sei ancora bloccato"
-                aria-label="Sono ancora bloccato su questo punto"
-              >
-                Sono ancora bloccato
-              </button>
-              <button
-                type="button"
-                class="tm-stage-btn tm-reset-stage-btn"
-                data-testid="reset-stage-btn"
-                data-tooltip="Ricomincia dallo Stadio 1 per un nuovo punto"
-                aria-label="Ricomincia dallo Stadio 1"
-              >
-                Nuovo punto (Stadio 1)
-              </button>
-            </div>
-          </div>
 
           <div
             class="tm-dialogue-list"
@@ -769,49 +736,124 @@ export async function mountWorkspaceUI(
     });
   }
 
-  const stageIndicator = container.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
-  const stagePills = stageIndicator.querySelectorAll<HTMLElement>('.tm-stage-pill');
-  const stageCurrentLabel = stageIndicator.querySelector<HTMLElement>('.tm-stage-current-label');
-  const stillStuckBtn = container.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]');
-  const resetStageBtn = container.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]');
+  const STAGE_DESCRIPTIONS: Record<MaieuticStage, string> = {
+    1: 'Stadio 1 (domanda esplorativa)',
+    2: 'Stadio 2 (scomposizione e trace a mano)',
+    3: 'Stadio 3 (analogia o micro-sintassi astratta)',
+    4: 'Stadio 4 (sintesi del blocco concettuale ed escalation al docente in laboratorio)',
+  };
 
-  function renderStageIndicator(stage: MaieuticStage): void {
-    stageIndicator.setAttribute('data-active-stage', String(stage));
-    stagePills.forEach((pill) => {
-      const pillStage = Number(pill.getAttribute('data-stage'));
-      if (pillStage === stage) {
-        pill.classList.add('tm-stage-active');
-      } else {
-        pill.classList.remove('tm-stage-active');
-      }
-    });
+  function renderTutorActionToolbar(
+    actionsEl: HTMLElement,
+    stage: MaieuticStage,
+    isLatest: boolean,
+    getText: () => string
+  ): void {
+    const stageDesc = STAGE_DESCRIPTIONS[stage];
+    const snap = engine.getSnapshot();
+    const isAtStage4 = stage === 4 || snap.currentStage === 4;
+    const canAdvance = isLatest && !isGenerating && !isAtStage4;
+    const canReset = isLatest && !isGenerating && snap.currentStage > 1;
 
-    const stageDescriptions: Record<MaieuticStage, string> = {
-      1: 'Stadio 1 (domanda esplorativa)',
-      2: 'Stadio 2 (scomposizione e trace a mano)',
-      3: 'Stadio 3 (analogia o micro-sintassi astratta)',
-      4: 'Stadio 4 (sintesi del blocco concettuale ed escalation al docente in laboratorio)',
-    };
-    if (stageCurrentLabel) {
-      stageCurrentLabel.textContent = stageDescriptions[stage];
+    actionsEl.setAttribute('role', 'toolbar');
+    actionsEl.setAttribute('aria-label', 'Azioni intervento maieutico');
+    actionsEl.innerHTML = `
+      <span
+        class="tm-turn-action-badge tm-stage-indicator-badge"
+        data-testid="maieutic-stage-indicator"
+        data-stage="${stage}"
+        data-active-stage="${stage}"
+        data-tooltip="${stageDesc}"
+        aria-label="${stageDesc}"
+        role="status"
+      >
+        <span class="tm-stage-badge-circle" aria-hidden="true">${stage}</span>
+        <span class="tm-sr-only">${stageDesc}</span>
+      </span>
+
+      <button
+        type="button"
+        class="tm-turn-action-btn tm-still-stuck-btn"
+        data-testid="still-stuck-btn"
+        data-tooltip="${isAtStage4 ? 'Raggiunto lo Stadio 4: alza la mano per il docente' : 'Sono ancora bloccato (avanza allo stadio successivo)'}"
+        aria-label="Sono ancora bloccato su questo punto"
+        ${canAdvance ? '' : 'disabled'}
+      >
+        ${ICONS.lifeBuoy}
+        <span class="tm-sr-only">Sono ancora bloccato</span>
+      </button>
+
+      <button
+        type="button"
+        class="tm-turn-action-btn tm-copy-turn-btn"
+        data-testid="copy-turn-btn"
+        data-tooltip="Copia intervento"
+        aria-label="Copia intervento maieutico"
+      >
+        ${ICONS.copyTurn}
+        <span class="tm-sr-only">Copia intervento</span>
+      </button>
+
+      <button
+        type="button"
+        class="tm-turn-action-btn tm-reset-stage-btn"
+        data-testid="reset-stage-btn"
+        data-tooltip="${snap.currentStage === 1 ? 'Già allo Stadio 1 (domanda esplorativa)' : 'Nuovo punto didattico: ricomincia da Stadio 1'}"
+        aria-label="Ricomincia da Stadio 1 per un nuovo punto didattico"
+        ${canReset ? '' : 'disabled'}
+      >
+        ${ICONS.resetStage}
+        <span class="tm-sr-only">Nuovo punto (Stadio 1)</span>
+      </button>
+    `;
+
+    const copyBtn = actionsEl.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    bindCopyTurnButton(copyBtn, getText);
+
+    const stillStuckBtn = actionsEl.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]');
+    if (stillStuckBtn && canAdvance) {
+      stillStuckBtn.addEventListener('click', () => {
+        if (!isGenerating) {
+          if (engine.getSnapshot().turns.length > 0) {
+            void runInterventionRequest('Sono ancora bloccato su questo punto');
+          } else {
+            engine.advanceMaieuticStage();
+            renderSnapshot(engine.getSnapshot());
+          }
+        }
+      });
+    }
+
+    const resetStageBtn = actionsEl.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]');
+    if (resetStageBtn && canReset) {
+      resetStageBtn.addEventListener('click', () => {
+        if (!isGenerating) {
+          engine.resetMaieuticStage();
+          renderSnapshot(engine.getSnapshot());
+        }
+      });
     }
   }
 
-  if (stillStuckBtn) {
-    stillStuckBtn.addEventListener('click', () => {
-      if (engine.getSnapshot().turns.length > 0 && !isGenerating) {
-        void runInterventionRequest('Sono ancora bloccato su questo punto');
-      } else {
-        const nextStage = engine.advanceMaieuticStage();
-        renderStageIndicator(nextStage);
+  function updateAllTutorToolbars(snapshot: MaieuticSessionSnapshot): void {
+    const tutorArticles = dialogueList.querySelectorAll<HTMLElement>('.tm-turn-tutor[data-turn-index]');
+    const lastTutorArticle = tutorArticles.length > 0 ? tutorArticles[tutorArticles.length - 1] : null;
+    tutorArticles.forEach((article) => {
+      const idx = Number(article.dataset.turnIndex);
+      const turn = snapshot.turns[idx];
+      if (!turn) return;
+      const isLatest = article === lastTutorArticle;
+      const actionsEl = article.querySelector<HTMLElement>('.tm-turn-actions');
+      const bodyEl = article.querySelector<HTMLElement>('.tm-turn-body');
+      if (actionsEl && bodyEl) {
+        const turnStage = turn.stage ?? snapshot.currentStage;
+        renderTutorActionToolbar(
+          actionsEl,
+          turnStage,
+          isLatest,
+          () => bodyEl.dataset.rawMarkdown ?? turn.content
+        );
       }
-    });
-  }
-
-  if (resetStageBtn) {
-    resetStageBtn.addEventListener('click', () => {
-      engine.resetMaieuticStage();
-      renderStageIndicator(engine.getSnapshot().currentStage);
     });
   }
 
@@ -1303,25 +1345,16 @@ export async function mountWorkspaceUI(
       ${antiSolutionAlertHtml}
       ${reasoningBlock}
       <div class="tm-turn-body"></div>
-      <footer class="tm-turn-actions">
-        <button
-          type="button"
-          class="tm-turn-action-btn"
-          data-testid="copy-turn-btn"
-          data-tooltip="Copia intervento"
-          aria-label="Copia intervento maieutico"
-        >
-          ${ICONS.copyTurn}
-        </button>
-      </footer>
+      <footer class="tm-turn-actions"></footer>
     `;
 
     const bodyEl = article.querySelector<HTMLElement>('.tm-turn-body')!;
     bodyEl.dataset.rawMarkdown = turn.content;
     setRenderedMarkdown(bodyEl, turn.content);
 
-    const copyBtn = article.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
-    bindCopyTurnButton(copyBtn, () => bodyEl.dataset.rawMarkdown ?? turn.content);
+    const actionsEl = article.querySelector<HTMLElement>('.tm-turn-actions')!;
+    const turnStage = turn.stage ?? engine.getSnapshot().currentStage;
+    renderTutorActionToolbar(actionsEl, turnStage, false, () => bodyEl.dataset.rawMarkdown ?? turn.content);
 
     return article;
   }
@@ -1337,7 +1370,6 @@ export async function mountWorkspaceUI(
     loaderEl: HTMLElement;
     bodyEl: HTMLElement;
     actionsEl: HTMLElement;
-    copyBtnEl: HTMLButtonElement;
   } {
     const article = document.createElement('article');
     article.className = 'tm-turn tm-turn-tutor tm-turn-thinking';
@@ -1362,23 +1394,11 @@ export async function mountWorkspaceUI(
         <span class="tm-shimmer-3 tm-shimmer-bar"></span>
       </div>
       <div class="tm-turn-body" hidden></div>
-      <footer class="tm-turn-actions" hidden>
-        <button
-          type="button"
-          class="tm-turn-action-btn"
-          data-testid="copy-turn-btn"
-          data-tooltip="Copia intervento"
-          aria-label="Copia intervento maieutico"
-        >
-          ${ICONS.copyTurn}
-        </button>
-      </footer>
+      <footer class="tm-turn-actions" hidden></footer>
     `;
 
     const bodyEl = article.querySelector<HTMLElement>('.tm-turn-body')!;
     const actionsEl = article.querySelector<HTMLElement>('.tm-turn-actions')!;
-    const copyBtnEl = article.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
-    bindCopyTurnButton(copyBtnEl, () => bodyEl.dataset.rawMarkdown ?? bodyEl.textContent ?? '');
 
     return {
       article,
@@ -1391,7 +1411,6 @@ export async function mountWorkspaceUI(
       loaderEl: article.querySelector<HTMLElement>('.tm-gemini-loader')!,
       bodyEl,
       actionsEl,
-      copyBtnEl,
     };
   }
 
@@ -1408,7 +1427,6 @@ export async function mountWorkspaceUI(
   function renderSnapshot(snapshot: MaieuticSessionSnapshot): void {
     renderHeaderState(snapshot);
     updateRequestButtonState(isGenerating, snapshot);
-    renderStageIndicator(snapshot.currentStage);
     if (curricularPresetSelect) {
       curricularPresetSelect.value = snapshot.activityContext.curricularPreset;
     }
@@ -1444,6 +1462,8 @@ export async function mountWorkspaceUI(
         dialogueList.appendChild(createTurnElement(turn, idx, false));
       }
     });
+
+    updateAllTutorToolbars(snapshot);
 
     scrollToLatest(true);
   }
@@ -1577,7 +1597,6 @@ export async function mountWorkspaceUI(
 
     const finalSnap = engine.getSnapshot();
     renderHeaderState(finalSnap);
-    renderStageIndicator(finalSnap.currentStage);
 
     // Rimuove l'indicatore temporaneo "Inviato" in-place senza ricreare il nodo dello studente
     const sentIndicator = dialogueList.querySelector('[data-testid="message-sent-indicator"]');
@@ -1661,6 +1680,14 @@ export async function mountWorkspaceUI(
       resolvedPendingTutor.bodyEl.dataset.rawMarkdown = finalTutorTurn.content;
       setRenderedMarkdown(resolvedPendingTutor.bodyEl, finalTutorTurn.content);
       resolvedPendingTutor.actionsEl.hidden = false;
+      const turnStage = finalTutorTurn.stage ?? finalSnap.currentStage;
+      renderTutorActionToolbar(
+        resolvedPendingTutor.actionsEl,
+        turnStage,
+        true,
+        () => resolvedPendingTutor.bodyEl.dataset.rawMarkdown ?? finalTutorTurn.content
+      );
+      updateAllTutorToolbars(finalSnap);
 
       if (finalTutorTurn.antiSolutionIntervened) {
         resolvedPendingTutor.article.insertBefore(

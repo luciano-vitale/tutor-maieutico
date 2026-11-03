@@ -1207,49 +1207,13 @@ describe('WorkspaceUI', () => {
     expect(statCounter.textContent).toBe('1');
   });
 
-  test('mostra l\'indicatore dello stadio maieutico, avanza a Stadio 4 con "Sono ancora bloccato" e resetta a Stadio 1', async () => {
+  test('mostra le icone della progressione maieutica sotto la risposta del tutor, avanza con "Sono ancora bloccato" e resetta a Stadio 1', async () => {
     const root = document.getElementById('app')!;
     const inference = new FakeInferencePort();
     const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
     await mountWorkspaceUI(root, engine);
 
-    const stageIndicator = root.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
-    expect(stageIndicator).not.toBeNull();
-    expect(stageIndicator.getAttribute('data-active-stage')).toBe('1');
-    expect(stageIndicator.textContent).toMatch(/Stadio 1/i);
-    expect(stageIndicator.textContent).toMatch(/domanda esplorativa/i);
-
-    const stillStuckBtn = root.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
-    expect(stillStuckBtn).not.toBeNull();
-    expect(stillStuckBtn.textContent).toMatch(/bloccato/i);
-
-    // Avanza a Stadio 2
-    stillStuckBtn.click();
-    expect(engine.getSnapshot().currentStage).toBe(2);
-    expect(stageIndicator.getAttribute('data-active-stage')).toBe('2');
-    expect(stageIndicator.textContent).toMatch(/trace|scomposizione/i);
-
-    // Avanza a Stadio 3
-    stillStuckBtn.click();
-    expect(engine.getSnapshot().currentStage).toBe(3);
-    expect(stageIndicator.getAttribute('data-active-stage')).toBe('3');
-    expect(stageIndicator.textContent).toMatch(/analogia|micro-sintassi/i);
-
-    // Avanza a Stadio 4 (Escalation al docente)
-    stillStuckBtn.click();
-    expect(engine.getSnapshot().currentStage).toBe(4);
-    expect(engine.getSnapshot().stage4ReachedCount).toBe(1);
-    expect(stageIndicator.getAttribute('data-active-stage')).toBe('4');
-    expect(stageIndicator.textContent).toMatch(/docente/i);
-
-    // Reset esplicito a Stadio 1
-    const resetStageBtn = root.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]')!;
-    expect(resetStageBtn).not.toBeNull();
-    resetStageBtn.click();
-    expect(engine.getSnapshot().currentStage).toBe(1);
-    expect(stageIndicator.getAttribute('data-active-stage')).toBe('1');
-
-    // Durante un dialogo attivo, il click su "Sono ancora bloccato" invia automaticamente la richiesta di supporto per lo stadio successivo
+    // Invia un primo tentativo per ricevere un intervento maieutico
     const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
     preCommitmentInput.value = 'Ho impostato una ricerca binaria ma entro in un loop infinito.';
     preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1260,13 +1224,111 @@ describe('WorkspaceUI', () => {
     expect(engine.getSnapshot().turns.length).toBeGreaterThan(0);
     expect(engine.getSnapshot().currentStage).toBe(1);
 
+    const tutorTurn = root.querySelector<HTMLElement>('.tm-turn-tutor')!;
+    expect(tutorTurn).not.toBeNull();
+
+    const stageIndicator = tutorTurn.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
+    expect(stageIndicator).not.toBeNull();
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('1');
+    expect(stageIndicator.textContent).toMatch(/Stadio 1/i);
+    expect(stageIndicator.textContent).toMatch(/domanda esplorativa/i);
+
+    const stillStuckBtn = tutorTurn.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    expect(stillStuckBtn).not.toBeNull();
+    expect(stillStuckBtn.textContent).toMatch(/bloccato/i);
+    expect(stillStuckBtn.disabled).toBe(false);
+
+    const copyBtn = tutorTurn.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    expect(copyBtn).not.toBeNull();
+
+    const resetStageBtn = tutorTurn.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]')!;
+    expect(resetStageBtn).not.toBeNull();
+    // Allo Stadio 1 il pulsante reset è disabilitato
+    expect(resetStageBtn.disabled).toBe(true);
+
+    // Click su "Sono ancora bloccato": avanza a Stadio 2 e genera un nuovo intervento
     const completeSpy = vi.spyOn(inference, 'completeChat');
     stillStuckBtn.click();
     await new Promise((r) => setTimeout(r, 20));
 
     expect(completeSpy).toHaveBeenCalled();
     expect(engine.getSnapshot().currentStage).toBe(2);
-    expect(stageIndicator.getAttribute('data-active-stage')).toBe('2');
+
+    const tutorTurns = root.querySelectorAll<HTMLElement>('.tm-turn-tutor');
+    const latestTutorTurn = tutorTurns[tutorTurns.length - 1];
+    const latestStageIndicator = latestTutorTurn.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
+    expect(latestStageIndicator.getAttribute('data-active-stage')).toBe('2');
+    expect(latestStageIndicator.textContent).toMatch(/trace|scomposizione/i);
+
+    // Ora che lo stadio è 2, il pulsante reset è abilitato
+    const latestResetBtn = latestTutorTurn.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]')!;
+    expect(latestResetBtn.disabled).toBe(false);
+
+    // Reset a Stadio 1
+    latestResetBtn.click();
+    expect(engine.getSnapshot().currentStage).toBe(1);
+    const updatedResetBtn = latestTutorTurn.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]')!;
+    expect(updatedResetBtn.disabled).toBe(true);
+  });
+
+  test('barra delle azioni dell\'intervento maieutico: disabilita il salvagente allo Stadio 4 (escalation al docente) e disattiva i pulsanti sui turni precedenti', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    preCommitmentInput.value = 'Non so come iniziare l\'ordinamento.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const form = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Stadio 1 -> Avanza a 2
+    let turns = root.querySelectorAll<HTMLElement>('.tm-turn-tutor');
+    let latestTurn = turns[turns.length - 1];
+    let stillStuckBtn = latestTurn.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    stillStuckBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(engine.getSnapshot().currentStage).toBe(2);
+
+    // Stadio 2 -> Avanza a 3
+    turns = root.querySelectorAll<HTMLElement>('.tm-turn-tutor');
+    latestTurn = turns[turns.length - 1];
+    stillStuckBtn = latestTurn.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    stillStuckBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    // Stadio 3 -> Avanza a 4 (Escalation al docente)
+    turns = root.querySelectorAll<HTMLElement>('.tm-turn-tutor');
+    latestTurn = turns[turns.length - 1];
+    stillStuckBtn = latestTurn.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    stillStuckBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(engine.getSnapshot().currentStage).toBe(4);
+    expect(engine.getSnapshot().stage4ReachedCount).toBe(1);
+
+    // Sullo Stadio 4, l'indicatore mostra escalation docente e il salvagente è disabilitato
+    turns = root.querySelectorAll<HTMLElement>('.tm-turn-tutor');
+    expect(turns.length).toBe(4);
+    latestTurn = turns[turns.length - 1];
+    const stageBadge = latestTurn.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
+    expect(stageBadge.getAttribute('data-active-stage')).toBe('4');
+    expect(stageBadge.textContent).toMatch(/docente/i);
+
+    stillStuckBtn = latestTurn.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    expect(stillStuckBtn.disabled).toBe(true);
+    expect(stillStuckBtn.getAttribute('data-tooltip')).toMatch(/docente/i);
+
+    // I turni precedenti hanno i pulsanti disabilitati
+    const turn0 = turns[0];
+    const stuckTurn0 = turn0.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    expect(stuckTurn0.disabled).toBe(true);
+
+    // Ma il pulsante di copia resta funzionante su tutti i turni
+    const copyTurn0 = turn0.querySelector<HTMLButtonElement>('[data-testid="copy-turn-btn"]')!;
+    expect(copyTurn0.disabled).toBe(false);
   });
 
   test('espone il pannello scaffolding cognitivo UDL con pulsante dedicato, configura i parametri cognitivi e attiva i controlli di accessibilità visiva', async () => {

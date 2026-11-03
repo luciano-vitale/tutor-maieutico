@@ -794,17 +794,37 @@ body {
 
 .tm-aup-btn {
   flex: 1;
-  padding: 0.35rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.25rem;
   font-size: 0.73rem;
-  font-weight: 500;
   font-family: inherit;
-  border-radius: 0.4rem;
+  border-radius: 0.45rem;
   border: 1px solid var(--tm-border);
   background: var(--tm-surface);
   color: var(--tm-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: center;
+  white-space: nowrap;
+}
+
+.tm-aup-level-num {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+}
+
+.tm-aup-level-text {
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.1;
+  color: inherit;
+  opacity: 0.9;
 }
 
 .tm-aup-btn:hover {
@@ -1292,9 +1312,48 @@ body {
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.tm-turn-action-btn:hover {
+.tm-turn-action-btn:hover:not(:disabled) {
   color: var(--tm-text);
   background: var(--tm-surface-hover);
+}
+
+.tm-turn-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tm-turn-action-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: 0.38rem;
+  background: transparent;
+  color: var(--tm-text-muted);
+  cursor: default;
+  user-select: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.tm-turn-action-badge:hover {
+  color: var(--tm-text);
+  background: var(--tm-surface-hover);
+}
+
+.tm-stage-badge-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* Subtle Neutral Shimmer Thinking Bars */
@@ -1658,96 +1717,8 @@ body {
 }
 
 /* ==========================================================================
-   Progressione maieutica a 4 stadi e controlli UDL
+   Controlli accessibilità e scaffolding cognitivo UDL
    ========================================================================== */
-
-.tm-stage-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  background: var(--tm-surface-subtle);
-  border-bottom: 1px solid var(--tm-border);
-  flex-wrap: wrap;
-}
-
-.tm-stage-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-}
-
-.tm-stage-pills {
-  display: inline-flex;
-  gap: 0.25rem;
-  background: var(--tm-input-bg);
-  border: 1px solid var(--tm-border);
-  border-radius: 9999px;
-  padding: 0.15rem 0.25rem;
-}
-
-.tm-stage-pill {
-  width: 1.35rem;
-  height: 1.35rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--tm-text-muted);
-  transition: all 0.15s ease;
-}
-
-.tm-stage-pill.tm-stage-active {
-  background: var(--tm-primary-bg);
-  color: var(--tm-primary-text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.tm-stage-current-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--tm-text);
-}
-
-.tm-stage-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.tm-stage-btn {
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.3rem 0.6rem;
-  border-radius: 0.35rem;
-  border: 1px solid var(--tm-border-strong);
-  background: var(--tm-surface);
-  color: var(--tm-text);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.tm-stage-btn:hover {
-  background: var(--tm-surface-hover);
-  border-color: var(--tm-border-focus);
-}
-
-.tm-still-stuck-btn {
-  background: var(--tm-surface);
-  font-weight: 600;
-}
-
-.tm-reset-stage-btn {
-  color: var(--tm-text-muted);
-}
-
-.tm-reset-stage-btn:hover {
-  color: var(--tm-text);
-}
 
 .tm-udl-accessibility-section {
   border-top: 1px solid var(--tm-border);
