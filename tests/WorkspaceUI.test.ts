@@ -1206,6 +1206,156 @@ describe('WorkspaceUI', () => {
     expect(engine.getSnapshot().zeroDataInterventionsCount).toBe(1);
     expect(statCounter.textContent).toBe('1');
   });
+
+  test('mostra l\'indicatore dello stadio maieutico, avanza a Stadio 4 con "Sono ancora bloccato" e resetta a Stadio 1', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const stageIndicator = root.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
+    expect(stageIndicator).not.toBeNull();
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('1');
+    expect(stageIndicator.textContent).toMatch(/Stadio 1/i);
+    expect(stageIndicator.textContent).toMatch(/domanda esplorativa/i);
+
+    const stillStuckBtn = root.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]')!;
+    expect(stillStuckBtn).not.toBeNull();
+    expect(stillStuckBtn.textContent).toMatch(/bloccato/i);
+
+    // Avanza a Stadio 2
+    stillStuckBtn.click();
+    expect(engine.getSnapshot().currentStage).toBe(2);
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('2');
+    expect(stageIndicator.textContent).toMatch(/trace|scomposizione/i);
+
+    // Avanza a Stadio 3
+    stillStuckBtn.click();
+    expect(engine.getSnapshot().currentStage).toBe(3);
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('3');
+    expect(stageIndicator.textContent).toMatch(/analogia|micro-sintassi/i);
+
+    // Avanza a Stadio 4 (Escalation al docente)
+    stillStuckBtn.click();
+    expect(engine.getSnapshot().currentStage).toBe(4);
+    expect(engine.getSnapshot().stage4ReachedCount).toBe(1);
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('4');
+    expect(stageIndicator.textContent).toMatch(/docente/i);
+
+    // Reset esplicito a Stadio 1
+    const resetStageBtn = root.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]')!;
+    expect(resetStageBtn).not.toBeNull();
+    resetStageBtn.click();
+    expect(engine.getSnapshot().currentStage).toBe(1);
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('1');
+
+    // Durante un dialogo attivo, il click su "Sono ancora bloccato" invia automaticamente la richiesta di supporto per lo stadio successivo
+    const preCommitmentInput = root.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+    preCommitmentInput.value = 'Ho impostato una ricerca binaria ma entro in un loop infinito.';
+    preCommitmentInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const form = root.querySelector<HTMLFormElement>('#student-attempt-form')!;
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(engine.getSnapshot().turns.length).toBeGreaterThan(0);
+    expect(engine.getSnapshot().currentStage).toBe(1);
+
+    const completeSpy = vi.spyOn(inference, 'completeChat');
+    stillStuckBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(completeSpy).toHaveBeenCalled();
+    expect(engine.getSnapshot().currentStage).toBe(2);
+    expect(stageIndicator.getAttribute('data-active-stage')).toBe('2');
+  });
+
+  test('espone il pannello scaffolding cognitivo UDL con pulsante dedicato, configura i parametri cognitivi e attiva i controlli di accessibilità visiva', async () => {
+    const root = document.getElementById('app')!;
+    const inference = new FakeInferencePort();
+    const engine = new MaieuticSessionEngine(inference, new FakeEnvironmentPort());
+    await mountWorkspaceUI(root, engine);
+
+    const toggleUdlBtn = root.querySelector<HTMLButtonElement>('[data-testid="toggle-udl-panel-btn"]')!;
+    expect(toggleUdlBtn).not.toBeNull();
+
+    const udlPanel = root.querySelector<HTMLElement>('[data-testid="udl-scaffolding-panel"]')!;
+    expect(udlPanel).not.toBeNull();
+    expect(udlPanel.hidden).toBe(true);
+
+    // Apertura pannello UDL dalla toolbar
+    toggleUdlBtn.click();
+    expect(udlPanel.hidden).toBe(false);
+
+    // Verifica divieto assoluto termini clinici/sanitari nei testi del pannello (ADR-0002)
+    expect(udlPanel.textContent).not.toMatch(/\b(DSA|BES|PDP|PEI|disabilit|diagnos)\b/i);
+
+    // Controlli cognitivi UDL
+    const levelSelect = udlPanel.querySelector<HTMLSelectElement>('[data-testid="udl-level-select"]')!;
+    const shortRepliesCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-short-replies"]')!;
+    const microStepsCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-micro-steps"]')!;
+    const textSchemasCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-text-schemas"]')!;
+
+    expect(levelSelect).not.toBeNull();
+    expect(shortRepliesCb).not.toBeNull();
+    expect(microStepsCb).not.toBeNull();
+    expect(textSchemasCb).not.toBeNull();
+
+    levelSelect.value = 'biennio';
+    levelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+    shortRepliesCb.checked = true;
+    shortRepliesCb.dispatchEvent(new Event('change', { bubbles: true }));
+
+    microStepsCb.checked = true;
+    microStepsCb.dispatchEvent(new Event('change', { bubbles: true }));
+
+    textSchemasCb.checked = true;
+    textSchemasCb.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(engine.getSnapshot().udlConfig).toEqual({
+      linguisticComplexity: 'biennio',
+      shortHighReadabilityReplies: true,
+      microStepBreakdown: true,
+      textLogicalSchemas: true,
+    });
+
+    // Controlli accessibilità visiva UI
+    const fontCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-readability-font"]')!;
+    const spacingCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-expanded-spacing"]')!;
+    const contrastCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-contrast"]')!;
+
+    expect(fontCb).not.toBeNull();
+    expect(spacingCb).not.toBeNull();
+    expect(contrastCb).not.toBeNull();
+
+    // Attivazione font ad alta leggibilità
+    fontCb.checked = true;
+    fontCb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.classList.contains('tm-high-readability-font')).toBe(true);
+
+    // Attivazione spaziatura aumentata
+    spacingCb.checked = true;
+    spacingCb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.classList.contains('tm-expanded-spacing')).toBe(true);
+
+    // Attivazione alto contrasto
+    contrastCb.checked = true;
+    contrastCb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.classList.contains('tm-high-contrast')).toBe(true);
+
+    // Disattivazione
+    fontCb.checked = false;
+    fontCb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.classList.contains('tm-high-readability-font')).toBe(false);
+
+    spacingCb.checked = false;
+    spacingCb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.classList.contains('tm-expanded-spacing')).toBe(false);
+
+    contrastCb.checked = false;
+    contrastCb.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.classList.contains('tm-high-contrast')).toBe(false);
+  });
 });
 
 

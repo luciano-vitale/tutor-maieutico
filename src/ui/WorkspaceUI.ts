@@ -2,6 +2,7 @@ import {
   type InferenceStatsSnapshot,
   type MaieuticSessionEngine,
   type MaieuticSessionSnapshot,
+  type MaieuticStage,
   isMeaningfulPreCommitment,
 } from '../domain/MaieuticSessionEngine';
 import { escapeHtml, setRenderedMarkdown } from './markdownRenderer';
@@ -25,6 +26,7 @@ const ICONS = {
   spinner: `<svg class="tm-spin" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
   stopSquare: `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>`,
   arrowDown: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`,
+  accessibilitySliders: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/></svg>`,
 };
 
 const IT_INTEGER_FORMATTER = new Intl.NumberFormat('it-IT', {
@@ -174,6 +176,15 @@ export async function mountWorkspaceUI(
             <h2 id="left-panel-heading" class="tm-panel-title">
               Contesto e tentativo dello studente
             </h2>
+            <button
+              type="button"
+              class="tm-icon-btn tm-udl-toggle-btn"
+              data-testid="toggle-udl-panel-btn"
+              data-tooltip="Scaffolding cognitivo UDL e accessibilità"
+              aria-label="Scaffolding cognitivo UDL e accessibilità"
+            >
+              ${ICONS.accessibilitySliders}
+            </button>
           </div>
 
           <div
@@ -183,12 +194,12 @@ export async function mountWorkspaceUI(
             hidden
           >
             <div class="tm-udl-header">
-              <span class="tm-udl-title">Scaffolding cognitivo UDL (ADR-0002)</span>
+              <span class="tm-udl-title">Scaffolding cognitivo UDL</span>
               <button
                 type="button"
                 class="tm-udl-close-btn"
                 data-testid="close-udl-panel-btn"
-                aria-label="Chiudi pannello scaffolding"
+                aria-label="Chiudi pannello scaffolding cognitivo"
               >✕</button>
             </div>
             <p class="tm-field-hint">
@@ -197,8 +208,8 @@ export async function mountWorkspaceUI(
             <div class="tm-form-group">
               <label for="udl-level-select" class="tm-label">Complessità linguistica</label>
               <select id="udl-level-select" class="tm-input" data-testid="udl-level-select">
-                <option value="biennio">Profilo biennio (classi I–II: lessico essenziale e concreto)</option>
                 <option value="triennio">Profilo triennio (classi III–V: lessico tecnico formale)</option>
+                <option value="biennio">Profilo biennio (classi I–II: lessico essenziale e concreto)</option>
               </select>
             </div>
             <div class="tm-form-group tm-checkbox-group">
@@ -212,6 +223,33 @@ export async function mountWorkspaceUI(
                 <input type="checkbox" id="udl-micro-steps" data-testid="udl-micro-steps" />
                 <span>Scomposizione in micro-passaggi numerati</span>
               </label>
+            </div>
+            <div class="tm-form-group tm-checkbox-group">
+              <label class="tm-checkbox-label">
+                <input type="checkbox" id="udl-text-schemas" data-testid="udl-text-schemas" />
+                <span>Schemi logici testuali e diagrammi passo-passo</span>
+              </label>
+            </div>
+            <div class="tm-udl-accessibility-section">
+              <span class="tm-udl-section-subtitle">Accessibilità visiva interfaccia</span>
+              <div class="tm-form-group tm-checkbox-group">
+                <label class="tm-checkbox-label">
+                  <input type="checkbox" id="udl-high-readability-font" data-testid="udl-high-readability-font" />
+                  <span>Font ad alta leggibilità</span>
+                </label>
+              </div>
+              <div class="tm-form-group tm-checkbox-group">
+                <label class="tm-checkbox-label">
+                  <input type="checkbox" id="udl-expanded-spacing" data-testid="udl-expanded-spacing" />
+                  <span>Spaziatura aumentata tra righe e parole</span>
+                </label>
+              </div>
+              <div class="tm-form-group tm-checkbox-group">
+                <label class="tm-checkbox-label">
+                  <input type="checkbox" id="udl-high-contrast" data-testid="udl-high-contrast" />
+                  <span>Tema ad alto contrasto</span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -291,6 +329,44 @@ export async function mountWorkspaceUI(
           <h2 id="right-panel-heading" class="tm-sr-only">
             Dialogo maieutico
           </h2>
+
+          <div class="tm-stage-bar">
+            <div
+              class="tm-stage-indicator"
+              data-testid="maieutic-stage-indicator"
+              data-active-stage="1"
+              role="status"
+              aria-label="Progressione maieutica a 4 stadi"
+            >
+              <div class="tm-stage-pills" aria-hidden="true">
+                <span class="tm-stage-pill tm-stage-active" data-stage="1">1</span>
+                <span class="tm-stage-pill" data-stage="2">2</span>
+                <span class="tm-stage-pill" data-stage="3">3</span>
+                <span class="tm-stage-pill" data-stage="4">4</span>
+              </div>
+              <span class="tm-stage-current-label">Stadio 1 (domanda esplorativa)</span>
+            </div>
+            <div class="tm-stage-actions">
+              <button
+                type="button"
+                class="tm-stage-btn tm-still-stuck-btn"
+                data-testid="still-stuck-btn"
+                data-tooltip="Avanza allo stadio successivo se sei ancora bloccato"
+                aria-label="Sono ancora bloccato su questo punto"
+              >
+                Sono ancora bloccato
+              </button>
+              <button
+                type="button"
+                class="tm-stage-btn tm-reset-stage-btn"
+                data-testid="reset-stage-btn"
+                data-tooltip="Ricomincia dallo Stadio 1 per un nuovo punto"
+                aria-label="Ricomincia dallo Stadio 1"
+              >
+                Nuovo punto (Stadio 1)
+              </button>
+            </div>
+          </div>
 
           <div
             class="tm-dialogue-list"
@@ -515,10 +591,123 @@ export async function mountWorkspaceUI(
   const feedbackBanner = container.querySelector<HTMLElement>('[data-testid="pedagogical-feedback"]')!;
   const zeroDataAlert = container.querySelector<HTMLElement>('[data-testid="zero-data-alert"]')!;
   const udlScaffoldingPanel = container.querySelector<HTMLElement>('[data-testid="udl-scaffolding-panel"]')!;
+  const toggleUdlBtn = container.querySelector<HTMLButtonElement>('[data-testid="toggle-udl-panel-btn"]');
   const closeUdlBtn = container.querySelector<HTMLButtonElement>('[data-testid="close-udl-panel-btn"]');
   if (closeUdlBtn) {
     closeUdlBtn.addEventListener('click', () => {
       udlScaffoldingPanel.hidden = true;
+    });
+  }
+  if (toggleUdlBtn) {
+    toggleUdlBtn.addEventListener('click', () => {
+      udlScaffoldingPanel.hidden = !udlScaffoldingPanel.hidden;
+    });
+  }
+
+  const udlLevelSelect = udlScaffoldingPanel.querySelector<HTMLSelectElement>('[data-testid="udl-level-select"]');
+  const udlShortRepliesCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-short-replies"]');
+  const udlMicroStepsCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-micro-steps"]');
+  const udlTextSchemasCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-text-schemas"]');
+  const udlHighReadabilityFontCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-readability-font"]');
+  const udlExpandedSpacingCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-expanded-spacing"]');
+  const udlHighContrastCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-contrast"]');
+
+  if (udlLevelSelect) {
+    udlLevelSelect.addEventListener('change', () => {
+      engine.updateUdlConfig({
+        linguisticComplexity: udlLevelSelect.value as 'biennio' | 'triennio',
+      });
+    });
+  }
+  if (udlShortRepliesCb) {
+    udlShortRepliesCb.addEventListener('change', () => {
+      engine.updateUdlConfig({
+        shortHighReadabilityReplies: udlShortRepliesCb.checked,
+      });
+    });
+  }
+  if (udlMicroStepsCb) {
+    udlMicroStepsCb.addEventListener('change', () => {
+      engine.updateUdlConfig({
+        microStepBreakdown: udlMicroStepsCb.checked,
+      });
+    });
+  }
+  if (udlTextSchemasCb) {
+    udlTextSchemasCb.addEventListener('change', () => {
+      engine.updateUdlConfig({
+        textLogicalSchemas: udlTextSchemasCb.checked,
+      });
+    });
+  }
+  if (udlHighReadabilityFontCb) {
+    udlHighReadabilityFontCb.addEventListener('change', () => {
+      document.documentElement.classList.toggle(
+        'tm-high-readability-font',
+        udlHighReadabilityFontCb.checked
+      );
+    });
+  }
+  if (udlExpandedSpacingCb) {
+    udlExpandedSpacingCb.addEventListener('change', () => {
+      document.documentElement.classList.toggle(
+        'tm-expanded-spacing',
+        udlExpandedSpacingCb.checked
+      );
+    });
+  }
+  if (udlHighContrastCb) {
+    udlHighContrastCb.addEventListener('change', () => {
+      document.documentElement.classList.toggle(
+        'tm-high-contrast',
+        udlHighContrastCb.checked
+      );
+    });
+  }
+
+  const stageIndicator = container.querySelector<HTMLElement>('[data-testid="maieutic-stage-indicator"]')!;
+  const stagePills = stageIndicator.querySelectorAll<HTMLElement>('.tm-stage-pill');
+  const stageCurrentLabel = stageIndicator.querySelector<HTMLElement>('.tm-stage-current-label');
+  const stillStuckBtn = container.querySelector<HTMLButtonElement>('[data-testid="still-stuck-btn"]');
+  const resetStageBtn = container.querySelector<HTMLButtonElement>('[data-testid="reset-stage-btn"]');
+
+  function renderStageIndicator(stage: MaieuticStage): void {
+    stageIndicator.setAttribute('data-active-stage', String(stage));
+    stagePills.forEach((pill) => {
+      const pillStage = Number(pill.getAttribute('data-stage'));
+      if (pillStage === stage) {
+        pill.classList.add('tm-stage-active');
+      } else {
+        pill.classList.remove('tm-stage-active');
+      }
+    });
+
+    const stageDescriptions: Record<MaieuticStage, string> = {
+      1: 'Stadio 1 (domanda esplorativa)',
+      2: 'Stadio 2 (scomposizione e trace a mano)',
+      3: 'Stadio 3 (analogia o micro-sintassi astratta)',
+      4: 'Stadio 4 (sintesi del blocco concettuale ed escalation al docente in laboratorio)',
+    };
+    if (stageCurrentLabel) {
+      stageCurrentLabel.textContent = stageDescriptions[stage];
+    }
+  }
+
+  if (stillStuckBtn) {
+    stillStuckBtn.addEventListener('click', () => {
+      if (engine.getSnapshot().turns.length > 0 && !isGenerating) {
+        void runInterventionRequest('Sono ancora bloccato su questo punto');
+      } else {
+        const nextStage = engine.advanceMaieuticStage();
+        renderStageIndicator(nextStage);
+      }
+    });
+  }
+
+  if (resetStageBtn) {
+    resetStageBtn.addEventListener('click', () => {
+      engine.resetMaieuticStage();
+      renderStageIndicator(engine.getSnapshot().currentStage);
     });
   }
 
@@ -1028,6 +1217,11 @@ export async function mountWorkspaceUI(
   function renderSnapshot(snapshot: MaieuticSessionSnapshot): void {
     renderHeaderState(snapshot);
     updateRequestButtonState(isGenerating, snapshot);
+    renderStageIndicator(snapshot.currentStage);
+    if (udlLevelSelect) udlLevelSelect.value = snapshot.udlConfig.linguisticComplexity;
+    if (udlShortRepliesCb) udlShortRepliesCb.checked = snapshot.udlConfig.shortHighReadabilityReplies;
+    if (udlMicroStepsCb) udlMicroStepsCb.checked = snapshot.udlConfig.microStepBreakdown;
+    if (udlTextSchemasCb) udlTextSchemasCb.checked = snapshot.udlConfig.textLogicalSchemas;
 
     if (snapshot.turns.length === 0) {
       dialogueList.innerHTML = `
@@ -1175,6 +1369,7 @@ export async function mountWorkspaceUI(
 
     const finalSnap = engine.getSnapshot();
     renderHeaderState(finalSnap);
+    renderStageIndicator(finalSnap.currentStage);
 
     // Rimuove l'indicatore temporaneo "Inviato" in-place senza ricreare il nodo dello studente
     const sentIndicator = dialogueList.querySelector('[data-testid="message-sent-indicator"]');

@@ -1558,3 +1558,167 @@ body {
     border: 1px solid CanvasText;
   }
 }
+
+/* ==========================================================================
+   Progressione maieutica a 4 stadi e controlli UDL
+   ========================================================================== */
+
+.tm-stage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--tm-surface-subtle);
+  border-bottom: 1px solid var(--tm-border);
+  flex-wrap: wrap;
+}
+
+.tm-stage-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.tm-stage-pills {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--tm-input-bg);
+  border: 1px solid var(--tm-border);
+  border-radius: 9999px;
+  padding: 0.15rem 0.25rem;
+}
+
+.tm-stage-pill {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tm-text-muted);
+  transition: all 0.15s ease;
+}
+
+.tm-stage-pill.tm-stage-active {
+  background: var(--tm-primary-bg);
+  color: var(--tm-primary-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.tm-stage-current-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--tm-text);
+}
+
+.tm-stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tm-stage-btn {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--tm-border-strong);
+  background: var(--tm-surface);
+  color: var(--tm-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tm-stage-btn:hover {
+  background: var(--tm-surface-hover);
+  border-color: var(--tm-border-focus);
+}
+
+.tm-still-stuck-btn {
+  background: var(--tm-surface);
+  font-weight: 600;
+}
+
+.tm-reset-stage-btn {
+  color: var(--tm-text-muted);
+}
+
+.tm-reset-stage-btn:hover {
+  color: var(--tm-text);
+}
+
+.tm-udl-accessibility-section {
+  border-top: 1px solid var(--tm-border);
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tm-udl-section-subtitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ==========================================================================
+   Accessibilità visiva UI (UDL / CU-12)
+   ========================================================================== */
+
+html.tm-high-readability-font,
+html.tm-high-readability-font body,
+html.tm-high-readability-font input,
+html.tm-high-readability-font textarea,
+html.tm-high-readability-font button,
+html.tm-high-readability-font select {
+  font-family: "Atkinson Hyperlegible", "OpenDyslexic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+html.tm-expanded-spacing body {
+  line-height: 1.85 !important;
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.08em !important;
+}
+
+html.tm-expanded-spacing .tm-turn-content,
+html.tm-expanded-spacing .tm-textarea,
+html.tm-expanded-spacing .tm-composer-input {
+  line-height: 1.85 !important;
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.08em !important;
+}
+
+html.tm-high-contrast {
+  --tm-canvas-bg: #000000 !important;
+  --tm-sidebar-bg: #000000 !important;
+  --tm-surface: #0a0a0a !important;
+  --tm-surface-subtle: #121212 !important;
+  --tm-input-bg: #050505 !important;
+  --tm-border: #ffffff !important;
+  --tm-border-strong: #ffffff !important;
+  --tm-border-focus: #ffff00 !important;
+  --tm-text: #ffffff !important;
+  --tm-text-secondary: #ffffff !important;
+  --tm-text-muted: #e5e5e5 !important;
+  --tm-primary-bg: #ffffff !important;
+  --tm-primary-text: #000000 !important;
+  --tm-student-bubble-bg: #141414 !important;
+  --tm-student-bubble-text: #ffffff !important;
+}
+
+html.tm-high-contrast .tm-turn-bubble,
+html.tm-high-contrast .tm-input,
+html.tm-high-contrast .tm-textarea,
+html.tm-high-contrast .tm-stage-pill,
+html.tm-high-contrast .tm-stage-btn,
+html.tm-high-contrast .tm-icon-btn {
+  border-width: 2px !important;
+  border-color: #ffffff !important;
+}

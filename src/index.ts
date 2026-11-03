@@ -6,13 +6,16 @@ export {
 export { BrowserEnvironmentAdapter } from './adapters/BrowserEnvironmentAdapter';
 export {
   MaieuticSessionEngine,
+  DEFAULT_UDL_CONFIG,
   type ConnectionStatus,
   type DialogueTurn,
   type InterventionResult,
   type MaieuticSessionSnapshot,
+  type MaieuticStage,
   type RequestInterventionOptions,
   type StudentDraft,
   type StudentDraftInput,
+  type UdlScaffoldingConfig,
 } from './domain/MaieuticSessionEngine';
 export type {
   ChatCompletionOptions,

@@ -28,6 +28,22 @@ export type StudentDraftInput = Partial<StudentDraft>;
 
 export type ConnectionStatus = 'idle' | 'online' | 'offline';
 
+export type MaieuticStage = 1 | 2 | 3 | 4;
+
+export interface UdlScaffoldingConfig {
+  linguisticComplexity: 'biennio' | 'triennio';
+  shortHighReadabilityReplies: boolean;
+  microStepBreakdown: boolean;
+  textLogicalSchemas: boolean;
+}
+
+export const DEFAULT_UDL_CONFIG: UdlScaffoldingConfig = {
+  linguisticComplexity: 'triennio',
+  shortHighReadabilityReplies: false,
+  microStepBreakdown: false,
+  textLogicalSchemas: false,
+};
+
 export interface InferenceStatsSnapshot {
   contextUsedTokens: number;
   contextMaxTokens: number | null;
@@ -43,6 +59,9 @@ export interface MaieuticSessionSnapshot extends StudentDraft {
   turns: DialogueTurn[];
   inferenceStats: InferenceStatsSnapshot;
   zeroDataInterventionsCount: number;
+  currentStage: MaieuticStage;
+  stage4ReachedCount: number;
+  udlConfig: UdlScaffoldingConfig;
 }
 
 export interface InterventionResult {
@@ -68,12 +87,98 @@ export interface RequestInterventionOptions {
 const MIN_PRE_COMMITMENT_CHARS = 15;
 const MIN_PRE_COMMITMENT_WORDS = 3;
 
-const MAIEUTIC_SYSTEM_PROMPT = `Sei StudIA Tutor Maieutico dei laboratori di informatica dell'I.I.S.S. "Marconi-Hack".
+const STUCK_PATTERN =
+  /\b(non (lo )?so|non ho capito|non capisco|sono bloccat[oa]|non riesco|non so (cosa|come) fare|non saprei|aiuto|nessuna idea|mi sono pers[oa])\b/i;
+
+const EXPLICIT_STUCK_PATTERN =
+  /^(sono )?ancora bloccat[oa]|\b(avanza(re)? allo stadio successivo|ancora bloccat[oa] su questo punto)\b/i;
+
+export function isStuckExpression(text: string): boolean {
+  return STUCK_PATTERN.test(text) || EXPLICIT_STUCK_PATTERN.test(text);
+}
+
+export function isExplicitStuckRequest(text: string): boolean {
+  return EXPLICIT_STUCK_PATTERN.test(text);
+}
+
+const BASE_MAIEUTIC_SYSTEM_PROMPT = `Sei StudIA Tutor Maieutico dei laboratori di informatica dell'I.I.S.S. "Marconi-Hack".
 Opera nel rigoroso rispetto dell'invariante di non-sostituzione (AUP-IA §1, art. 25 L. 132/2025):
 - Non fornire mai la soluzione completa o il codice risolutivo pronto all'uso.
 - Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo pre-impegno cognitivo.
 - Se lo studente formula direttamente un dubbio concettuale o algoritmico nella chat senza aver allegato codice o errori nel pannello laterale, rispondi maieuticamente sul suo modello concettuale e invitalo socraticamente, qualora utile all'indagine, a condividere il frammento di codice o l'errore del compilatore nel pannello di contesto.
 - Non esprimere mai voti, giudizi valutativi o profilazioni dello studente (CU-16..19 esclusi).`;
+
+export function buildMaieuticSystemPrompt(
+  stage: MaieuticStage,
+  udl: UdlScaffoldingConfig
+): string {
+  const sections: string[] = [BASE_MAIEUTIC_SYSTEM_PROMPT];
+
+  // Direttiva specifica per lo stadio della progressione maieutica
+  sections.push('### Progressione maieutica e obiettivo pedagogico');
+  switch (stage) {
+    case 1:
+      sections.push(
+        'Stadio attivo: Stadio 1 (domanda esplorativa).\n' +
+          'Il tuo obiettivo è porre domande per far individuare allo studente i dati di input/output, le variabili coinvolte o la riga sospetta nel suo tentativo, stimolando la riflessione iniziale.'
+      );
+      break;
+    case 2:
+      sections.push(
+        'Stadio attivo: Stadio 2 (scomposizione e trace a mano).\n' +
+          'Il tuo obiettivo è spezzare il problema in micro-passi logici e guidare lo studente a simulare l\'esecuzione passo-passo con valori concreti (trace table o evoluzione delle variabili).'
+      );
+      break;
+    case 3:
+      sections.push(
+        'Stadio attivo: Stadio 3 (analogia o micro-sintassi astratta).\n' +
+          'Il tuo obiettivo è proporre un\'analogia concreta esplicativa o un micro-esempio sintattico astratto di massimo 3 righe su un problema fittizio completamente diverso dall\'esercizio dello studente.'
+      );
+      break;
+    case 4:
+      sections.push(
+        'Stadio attivo: Stadio 4 (sintesi del blocco concettuale ed escalation al docente in laboratorio).\n' +
+          'NON cedere assolutamente la soluzione o codice. Riassumi in 2 punti chiari e sintetici il nodo concettuale residuo non risolto e invita esplicitamente lo studente ad alzare la mano e chiamare il docente in laboratorio per un confronto umano diretto (Human-in-the-Loop, AUP-IA §1).'
+      );
+      break;
+  }
+
+  // Adattamenti universali di scaffolding cognitivo UDL (ADR-0002) - nessun termine clinico o diagnostico
+  const udlGuidelines: string[] = [];
+  if (udl.linguisticComplexity === 'biennio') {
+    udlGuidelines.push(
+      '- Complessità linguistica: Profilo biennio (classi I–II: lessico essenziale, frasi semplici e concrete, evitando gergo astratto non necessario).'
+    );
+  } else {
+    udlGuidelines.push(
+      '- Complessità linguistica: Profilo triennio (classi III–V: lessico tecnico formale e rigoroso).'
+    );
+  }
+
+  if (udl.shortHighReadabilityReplies) {
+    udlGuidelines.push(
+      '- Risposte brevi ad alta leggibilità: Frasi corte, periodi semplici ed elenchi puntati essenziali.'
+    );
+  }
+
+  if (udl.microStepBreakdown) {
+    udlGuidelines.push(
+      '- Scomposizione guidata in micro-passaggi: Tratta rigorosamente un solo concetto o micro-passo alla volta prima di porre la domanda successiva.'
+    );
+  }
+
+  if (udl.textLogicalSchemas) {
+    udlGuidelines.push(
+      '- Schemi logici testuali: Utilizza rappresentazioni visuali o schemi logici testuali passo-passo (es. diagrammi ASCII o tabelle testuali) per chiarire le relazioni.'
+    );
+  }
+
+  if (udlGuidelines.length > 0) {
+    sections.push('### Scaffolding cognitivo universale (UDL)\n' + udlGuidelines.join('\n'));
+  }
+
+  return sections.join('\n\n');
+}
 
 export function isMeaningfulPreCommitment(text: string): boolean {
   const trimmed = text.trim();
@@ -120,6 +225,11 @@ export class MaieuticSessionEngine {
   private contextUsedTokens = 0;
   private tokensPerSecond: number | null = null;
   private zeroDataInterventionsCount = 0;
+  private currentStage: MaieuticStage = 1;
+  private stage4ReachedCount = 0;
+  private consecutiveStuckCount = 0;
+  private lastInterventionCode: string | null = null;
+  private udlConfig: UdlScaffoldingConfig = { ...DEFAULT_UDL_CONFIG };
 
   constructor(inferencePort: InferencePort, environmentPort: EnvironmentPort) {
     this.inferencePort = inferencePort;
@@ -161,6 +271,9 @@ export class MaieuticSessionEngine {
       turns: this.turns.map((turn) => ({ ...turn })),
       inferenceStats: this.buildInferenceStats(),
       zeroDataInterventionsCount: this.zeroDataInterventionsCount,
+      currentStage: this.currentStage,
+      stage4ReachedCount: this.stage4ReachedCount,
+      udlConfig: { ...this.udlConfig },
     };
   }
 
@@ -222,6 +335,28 @@ export class MaieuticSessionEngine {
       return true;
     }
     return false;
+  }
+
+  advanceMaieuticStage(): MaieuticStage {
+    if (this.currentStage < 4) {
+      this.currentStage = (this.currentStage + 1) as MaieuticStage;
+      if (this.currentStage === 4) {
+        this.stage4ReachedCount += 1;
+      }
+    }
+    return this.currentStage;
+  }
+
+  resetMaieuticStage(): void {
+    this.currentStage = 1;
+    this.consecutiveStuckCount = 0;
+  }
+
+  updateUdlConfig(config: Partial<UdlScaffoldingConfig>): void {
+    this.udlConfig = {
+      ...this.udlConfig,
+      ...config,
+    };
   }
 
   async requestMaieuticIntervention(
@@ -311,12 +446,44 @@ export class MaieuticSessionEngine {
       };
     }
 
+    // Se il frammento di codice è stato modificato significativamente rispetto al turno precedente, resetta allo Stadio 1
+    const trimmedCode = this.draft.studentCode.trim();
+    if (
+      this.lastInterventionCode !== null &&
+      trimmedCode.length > 0 &&
+      trimmedCode !== this.lastInterventionCode
+    ) {
+      this.resetMaieuticStage();
+    }
+    if (trimmedCode.length > 0) {
+      this.lastInterventionCode = trimmedCode;
+    }
+
+    if (isFollowUpReply) {
+      if (isExplicitStuckRequest(followUpTrimmed)) {
+        this.advanceMaieuticStage();
+        this.consecutiveStuckCount = 0;
+      } else if (isStuckExpression(followUpTrimmed)) {
+        this.consecutiveStuckCount += 1;
+        if (this.consecutiveStuckCount >= 2) {
+          this.advanceMaieuticStage();
+          this.consecutiveStuckCount = 0;
+        }
+      } else {
+        this.consecutiveStuckCount = 0;
+      }
+    } else {
+      this.consecutiveStuckCount = 0;
+    }
+
     const studentMessageContent = isFollowUpReply
       ? followUpTrimmed
       : this.buildDraftPrompt();
 
+    const systemPrompt = buildMaieuticSystemPrompt(this.currentStage, this.udlConfig);
+
     const messages: ChatMessage[] = [
-      { role: 'system', content: MAIEUTIC_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...this.turns.map((t): ChatMessage => ({
         role: t.role === 'student' ? 'user' : 'assistant',
         content: t.content,
@@ -501,6 +668,11 @@ export class MaieuticSessionEngine {
     this.contextUsedTokens = 0;
     this.tokensPerSecond = null;
     this.zeroDataInterventionsCount = 0;
+    this.currentStage = 1;
+    this.stage4ReachedCount = 0;
+    this.consecutiveStuckCount = 0;
+    this.lastInterventionCode = null;
+    this.udlConfig = { ...DEFAULT_UDL_CONFIG };
   }
 
   private buildDraftPrompt(): string {

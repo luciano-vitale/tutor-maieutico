@@ -367,5 +367,142 @@ describe('MaieuticSessionEngine', () => {
       tokensPerSecond: null,
     });
   });
+
+  test('gestisce la progressione maieutica a 4 stadi, l\'avanzamento manuale, il limite a stadio 4 e il reset', () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    const initial = engine.getSnapshot();
+    expect(initial.currentStage).toBe(1);
+    expect(initial.stage4ReachedCount).toBe(0);
+
+    expect(engine.advanceMaieuticStage()).toBe(2);
+    expect(engine.getSnapshot().currentStage).toBe(2);
+
+    expect(engine.advanceMaieuticStage()).toBe(3);
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    expect(engine.advanceMaieuticStage()).toBe(4);
+    expect(engine.getSnapshot().currentStage).toBe(4);
+    expect(engine.getSnapshot().stage4ReachedCount).toBe(1);
+
+    // Un ulteriore avanzamento non supera lo Stadio 4
+    expect(engine.advanceMaieuticStage()).toBe(4);
+    expect(engine.getSnapshot().currentStage).toBe(4);
+    expect(engine.getSnapshot().stage4ReachedCount).toBe(1);
+
+    // Reset esplicito dello stadio
+    engine.resetMaieuticStage();
+    expect(engine.getSnapshot().currentStage).toBe(1);
+  });
+
+  test('avanza automaticamente lo stadio maieutico su turni consecutivi di blocco e lo resetta con nuovo codice', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    engine.updateStudentDraft({
+      studentCode: 'int sum = 0;\nfor (int i = 0; i <= n; i++) sum += v[i];',
+      cognitivePreCommitment: 'Ho scritto la somma cumulativa ma ottengo un valore non corretto.',
+    });
+
+    // Inizio sessione: Stadio 1
+    const res1 = await engine.requestMaieuticIntervention();
+    expect(res1.status).toBe('ok');
+    expect(engine.getSnapshot().currentStage).toBe(1);
+
+    // Primo turno di blocco: non avanza ancora (richiede turni consecutivi)
+    inference.cannedReply = 'Quali sono i valori dell\'indice?';
+    await engine.requestMaieuticIntervention('Non lo so sinceramente.');
+    expect(engine.getSnapshot().currentStage).toBe(1);
+
+    // Secondo turno consecutivo di blocco: avanza automaticamente a Stadio 2
+    inference.cannedReply = 'Proviamo a simulare il primo passo: se n vale 2, quanto vale i all\'inizio?';
+    await engine.requestMaieuticIntervention('Non ho capito come fare il trace.');
+    expect(engine.getSnapshot().currentStage).toBe(2);
+
+    // Terzo turno consecutivo di blocco: avanza automaticamente a Stadio 3
+    inference.cannedReply = 'Immagina una fila di scatole numerate...';
+    await engine.requestMaieuticIntervention('Sono ancora bloccato, non so cosa fare.');
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    // Risposta propositiva: azzera il conteggio di blocco consecutivo ma mantiene lo stadio corrente
+    inference.cannedReply = 'Esatto, la prima scatola ha indice 0.';
+    await engine.requestMaieuticIntervention('Forse la prima scatola è 0?');
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    // Un singolo turno di blocco successivo non avanza subito a Stadio 4
+    await engine.requestMaieuticIntervention('Non saprei come continuare.');
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    // Secondo blocco consecutivo: avanza a Stadio 4
+    await engine.requestMaieuticIntervention('Non ci riesco proprio, sono bloccato.');
+    expect(engine.getSnapshot().currentStage).toBe(4);
+    expect(engine.getSnapshot().stage4ReachedCount).toBe(1);
+
+    // Modifica del codice e invio di un nuovo tentativo: resetta la progressione allo Stadio 1
+    engine.updateStudentDraft({
+      studentCode: 'int sum = 0;\nfor (int i = 0; i < n; i++) sum += v[i]; // corretto estremo',
+      cognitivePreCommitment: 'Ho cambiato la condizione in i < n per non superare la dimensione.',
+    });
+    await engine.requestMaieuticIntervention();
+    expect(engine.getSnapshot().currentStage).toBe(1);
+  });
+
+  test('configura lo scaffolding cognitivo UDL e adatta il System Prompt per stadio maieutico senza mai usare termini clinici', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    engine.updateStudentDraft({
+      cognitivePreCommitment: 'Non capisco dove sbaglio nel calcolo della media degli interi.',
+    });
+
+    // Default: Stadio 1, UDL standard (triennio, no short, no micro-steps, no schemas)
+    await engine.requestMaieuticIntervention();
+    const initialSystemPrompt = inference.lastMessages[0].content;
+    expect(initialSystemPrompt).toContain('Stadio 1');
+    expect(initialSystemPrompt).toMatch(/domanda esplorativa/i);
+
+    // Avanza a Stadio 4 e attiva le opzioni UDL
+    engine.advanceMaieuticStage(); // 2
+    engine.advanceMaieuticStage(); // 3
+    engine.advanceMaieuticStage(); // 4
+    expect(engine.getSnapshot().currentStage).toBe(4);
+
+    engine.updateUdlConfig({
+      linguisticComplexity: 'biennio',
+      shortHighReadabilityReplies: true,
+      microStepBreakdown: true,
+      textLogicalSchemas: true,
+    });
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.udlConfig).toEqual({
+      linguisticComplexity: 'biennio',
+      shortHighReadabilityReplies: true,
+      microStepBreakdown: true,
+      textLogicalSchemas: true,
+    });
+
+    await engine.requestMaieuticIntervention('Ho provato ancora ma non arrivo al risultato.');
+    const stage4SystemPrompt = inference.lastMessages[0].content;
+
+    // Linee guida Stadio 4: sintesi in 2 punti ed escalation al docente in laboratorio (Human-in-the-Loop)
+    expect(stage4SystemPrompt).toContain('Stadio 4');
+    expect(stage4SystemPrompt).toMatch(/sintesi.*(blocco|nodo concettuale)/i);
+    expect(stage4SystemPrompt).toMatch(/docente in laboratorio/i);
+    expect(stage4SystemPrompt).toMatch(/alzare la mano/i);
+
+    // Linee guida Scaffolding UDL
+    expect(stage4SystemPrompt).toMatch(/biennio/i);
+    expect(stage4SystemPrompt).toMatch(/risposte brevi/i);
+    expect(stage4SystemPrompt).toMatch(/micro-passagg/i);
+    expect(stage4SystemPrompt).toMatch(/schem/i);
+
+    // ADR-0002: Divieto assoluto di etichette o termini clinico-sanitari nel System Prompt
+    expect(stage4SystemPrompt).not.toMatch(/\b(DSA|BES|PDP|PEI|disabilit|diagnos)\b/i);
+  });
 });
 
