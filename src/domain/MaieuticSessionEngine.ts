@@ -10,12 +10,85 @@ import {
   sanitizeZeroData,
   type ZeroDataInspectionResult,
 } from './ZeroDataGuardrail';
+import {
+  inspectAndApplyAntiSolution,
+  type AupDidacticLevel,
+} from './AntiSolutionGuardrail';
+
+export type CurricularPresetId =
+  | 'pseudocode'
+  | 'c_cpp'
+  | 'python'
+  | 'java'
+  | 'sql'
+  | 'web';
+
+export interface CurricularPreset {
+  id: CurricularPresetId;
+  name: string;
+  targetLanguage: string;
+  description: string;
+}
+
+export const CURRICULAR_PRESETS: CurricularPreset[] = [
+  {
+    id: 'pseudocode',
+    name: 'Pseudocodice/Algoritmica',
+    targetLanguage: 'pseudocode',
+    description: 'Algoritmica e logica formale in pseudocodice testuale',
+  },
+  {
+    id: 'c_cpp',
+    name: 'C/C++',
+    targetLanguage: 'c_cpp',
+    description: 'Programmazione strutturata e orientata agli oggetti in C e C++',
+  },
+  {
+    id: 'python',
+    name: 'Python',
+    targetLanguage: 'python',
+    description: 'Programmazione procedurale e orientata agli oggetti in Python',
+  },
+  {
+    id: 'java',
+    name: 'Java',
+    targetLanguage: 'java',
+    description: 'Programmazione orientata agli oggetti in Java',
+  },
+  {
+    id: 'sql',
+    name: 'SQL/Database',
+    targetLanguage: 'sql',
+    description: 'Basi di dati, interrogazioni SQL e modellazione relazionale',
+  },
+  {
+    id: 'web',
+    name: 'Web HTML/CSS/JS/PHP',
+    targetLanguage: 'web',
+    description: 'Sviluppo web front-end e back-end (HTML5, CSS3, JavaScript, PHP)',
+  },
+];
+
+export interface ActivityContext {
+  curricularPreset: CurricularPresetId;
+  exercisePrompt: string;
+  didacticConstraints: string;
+  aupLevel: AupDidacticLevel;
+}
+
+export const DEFAULT_ACTIVITY_CONTEXT: ActivityContext = {
+  curricularPreset: 'c_cpp',
+  exercisePrompt: '',
+  didacticConstraints: '',
+  aupLevel: 2,
+};
 
 export interface DialogueTurn {
   role: 'student' | 'tutor';
   content: string;
   reasoning?: string;
   timestampIso: string;
+  antiSolutionIntervened?: boolean;
 }
 
 export interface StudentDraft {
@@ -59,9 +132,11 @@ export interface MaieuticSessionSnapshot extends StudentDraft {
   turns: DialogueTurn[];
   inferenceStats: InferenceStatsSnapshot;
   zeroDataInterventionsCount: number;
+  antiSolutionInterventionsCount: number;
   currentStage: MaieuticStage;
   stage4ReachedCount: number;
   udlConfig: UdlScaffoldingConfig;
+  activityContext: ActivityContext;
 }
 
 export interface InterventionResult {
@@ -110,9 +185,54 @@ Opera nel rigoroso rispetto dell'invariante di non-sostituzione (AUP-IA §1, art
 
 export function buildMaieuticSystemPrompt(
   stage: MaieuticStage,
-  udl: UdlScaffoldingConfig
+  udl: UdlScaffoldingConfig,
+  activityContext: ActivityContext = DEFAULT_ACTIVITY_CONTEXT
 ): string {
   const sections: string[] = [BASE_MAIEUTIC_SYSTEM_PROMPT];
+
+  // Ambito curricolare e traccia/vincoli dell'attività
+  const preset =
+    CURRICULAR_PRESETS.find((p) => p.id === activityContext.curricularPreset) ??
+    CURRICULAR_PRESETS[0];
+
+  const contextLines: string[] = [
+    `Ambito curricolare attivo: ${preset.name} (${preset.description}).`,
+  ];
+  if (activityContext.exercisePrompt.trim().length > 0) {
+    contextLines.push(
+      `Traccia dell'esercizio assegnato:\n${activityContext.exercisePrompt.trim()}`
+    );
+  }
+  if (activityContext.didacticConstraints.trim().length > 0) {
+    contextLines.push(
+      `Vincoli algoritmici e didattici:\n${activityContext.didacticConstraints.trim()}`
+    );
+  }
+  sections.push(`### Contesto dell'attività e ambito curricolare\n${contextLines.join('\n\n')}`);
+
+  // Regole specifiche per il livello didattico AUP
+  sections.push('### Livello didattico AUP e invariante di non-sostituzione');
+  switch (activityContext.aupLevel) {
+    case 1:
+      sections.push(
+        'Livello attivo: livello 1 (supporto preliminare e chiarimenti concettuali).\n' +
+          'Zero codice nella sintassi target: non fornire assolutamente alcuna riga di codice nel linguaggio di programmazione. ' +
+          'Fornisci solo spiegazioni concettuali, domande di autoverifica e al più pseudocodice testuale discorsivo.'
+      );
+      break;
+    case 2:
+      sections.push(
+        'Livello attivo: livello 2 (revisione assistita del lavoro già scritto dallo studente).\n' +
+          'Guida lo studente tramite domande socratiche sul suo codice. Puoi fornire al più micro-esempi sintattici astratti di massimo 3 righe su scenari fittizi e disgiunti dall\'esercizio dello studente.'
+      );
+      break;
+    case 3:
+      sections.push(
+        'Livello attivo: livello 3 (co-progettazione socratica e debugging guidato).\n' +
+          'Analisi logica degli errori e co-progettazione architetturale. Puoi fornire al più micro-esempi sintattici astratti di massimo 3 righe su scenari fittizi e disgiunti dall\'esercizio dello studente.'
+      );
+      break;
+  }
 
   // Direttiva specifica per lo stadio della progressione maieutica
   sections.push('### Progressione maieutica e obiettivo pedagogico');
@@ -225,11 +345,13 @@ export class MaieuticSessionEngine {
   private contextUsedTokens = 0;
   private tokensPerSecond: number | null = null;
   private zeroDataInterventionsCount = 0;
+  private antiSolutionInterventionsCount = 0;
   private currentStage: MaieuticStage = 1;
   private stage4ReachedCount = 0;
   private consecutiveStuckCount = 0;
   private lastInterventionCode: string | null = null;
   private udlConfig: UdlScaffoldingConfig = { ...DEFAULT_UDL_CONFIG };
+  private activityContext: ActivityContext = { ...DEFAULT_ACTIVITY_CONTEXT };
 
   constructor(inferencePort: InferencePort, environmentPort: EnvironmentPort) {
     this.inferencePort = inferencePort;
@@ -271,9 +393,18 @@ export class MaieuticSessionEngine {
       turns: this.turns.map((turn) => ({ ...turn })),
       inferenceStats: this.buildInferenceStats(),
       zeroDataInterventionsCount: this.zeroDataInterventionsCount,
+      antiSolutionInterventionsCount: this.antiSolutionInterventionsCount,
       currentStage: this.currentStage,
       stage4ReachedCount: this.stage4ReachedCount,
       udlConfig: { ...this.udlConfig },
+      activityContext: { ...this.activityContext },
+    };
+  }
+
+  updateActivityContext(input: Partial<ActivityContext>): void {
+    this.activityContext = {
+      ...this.activityContext,
+      ...input,
     };
   }
 
@@ -480,7 +611,11 @@ export class MaieuticSessionEngine {
       ? followUpTrimmed
       : this.buildDraftPrompt();
 
-    const systemPrompt = buildMaieuticSystemPrompt(this.currentStage, this.udlConfig);
+    const systemPrompt = buildMaieuticSystemPrompt(
+      this.currentStage,
+      this.udlConfig,
+      this.activityContext
+    );
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -586,12 +721,25 @@ export class MaieuticSessionEngine {
 
       const effectiveContent = reply || accumulatedContent;
 
+      const preset = CURRICULAR_PRESETS.find(
+        (p) => p.id === this.activityContext.curricularPreset
+      );
+      const antiSolutionRes = inspectAndApplyAntiSolution(
+        effectiveContent,
+        this.activityContext.aupLevel,
+        preset?.targetLanguage
+      );
+      if (antiSolutionRes.intercepted) {
+        this.antiSolutionInterventionsCount += antiSolutionRes.interventionsCount;
+      }
+      const safeContent = antiSolutionRes.cleanContent;
+
       if (abortController.signal.aborted) {
         this.connectionStatus = 'online';
-        const hasText = effectiveContent.trim().length > 0;
-        const finalContent = hasText ? effectiveContent : '[Intervento interrotto dallo studente]';
+        const hasText = safeContent.trim().length > 0;
+        const finalContent = hasText ? safeContent : '[Intervento interrotto dallo studente]';
         if (hasText || accumulatedReasoning.length > 0) {
-          finalizeTurnStats(hasText ? effectiveContent : '');
+          finalizeTurnStats(hasText ? safeContent : '');
         }
 
         this.turns.push({
@@ -607,11 +755,12 @@ export class MaieuticSessionEngine {
         };
       }
 
-      finalizeTurnStats(effectiveContent);
+      finalizeTurnStats(safeContent);
 
       this.turns.push({
         role: 'tutor',
-        content: effectiveContent,
+        content: safeContent,
+        ...(antiSolutionRes.intercepted ? { antiSolutionIntervened: true } : {}),
         ...(accumulatedReasoning.length > 0 ? { reasoning: accumulatedReasoning } : {}),
         timestampIso: this.environmentPort.nowIso(),
       });
@@ -619,7 +768,7 @@ export class MaieuticSessionEngine {
 
       return {
         status: 'ok',
-        assistantReply: effectiveContent,
+        assistantReply: safeContent,
       };
     } catch (err) {
       const isAborted =
@@ -668,6 +817,7 @@ export class MaieuticSessionEngine {
     this.contextUsedTokens = 0;
     this.tokensPerSecond = null;
     this.zeroDataInterventionsCount = 0;
+    this.antiSolutionInterventionsCount = 0;
     this.currentStage = 1;
     this.stage4ReachedCount = 0;
     this.consecutiveStuckCount = 0;

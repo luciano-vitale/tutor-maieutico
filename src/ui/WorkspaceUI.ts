@@ -1,10 +1,15 @@
 import {
+  type CurricularPresetId,
   type InferenceStatsSnapshot,
   type MaieuticSessionEngine,
   type MaieuticSessionSnapshot,
   type MaieuticStage,
   isMeaningfulPreCommitment,
 } from '../domain/MaieuticSessionEngine';
+import {
+  inspectAndApplyAntiSolution,
+  type AupDidacticLevel,
+} from '../domain/AntiSolutionGuardrail';
 import { escapeHtml, setRenderedMarkdown } from './markdownRenderer';
 
 const ICONS = {
@@ -252,6 +257,101 @@ export async function mountWorkspaceUI(
               </div>
             </div>
           </div>
+
+          <section
+            id="activity-context-section"
+            class="tm-activity-context-panel"
+            data-testid="activity-context-panel"
+            aria-labelledby="activity-context-heading"
+          >
+            <div class="tm-activity-context-header">
+              <h3 id="activity-context-heading" class="tm-activity-context-title">
+                Contesto dell'attività
+              </h3>
+              <span class="tm-aup-badge" data-testid="aup-level-badge">Livello didattico AUP 2 • Revisione</span>
+            </div>
+
+            <div class="tm-form-group">
+              <label for="curricular-preset-select" class="tm-label">Ambito curricolare</label>
+              <select
+                id="curricular-preset-select"
+                class="tm-input"
+                data-testid="curricular-preset-select"
+              >
+                <option value="pseudocode">Pseudocodice/Algoritmica</option>
+                <option value="c_cpp" selected>C/C++</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="sql">SQL/Database</option>
+                <option value="web">Web HTML/CSS/JS/PHP</option>
+              </select>
+            </div>
+
+            <div class="tm-form-group">
+              <label class="tm-label">Livello didattico AUP</label>
+              <div
+                class="tm-aup-selector"
+                data-testid="aup-level-selector"
+                role="radiogroup"
+                aria-label="Livello didattico AUP"
+              >
+                <button
+                  type="button"
+                  class="tm-aup-btn"
+                  data-testid="aup-level-btn-1"
+                  data-aup-level="1"
+                  role="radio"
+                  aria-checked="false"
+                >
+                  1 • concettuale
+                </button>
+                <button
+                  type="button"
+                  class="tm-aup-btn tm-aup-btn-active"
+                  data-testid="aup-level-btn-2"
+                  data-aup-level="2"
+                  role="radio"
+                  aria-checked="true"
+                >
+                  2 • revisione
+                </button>
+                <button
+                  type="button"
+                  class="tm-aup-btn"
+                  data-testid="aup-level-btn-3"
+                  data-aup-level="3"
+                  role="radio"
+                  aria-checked="false"
+                >
+                  3 • debugging
+                </button>
+              </div>
+            </div>
+
+            <div class="tm-form-group">
+              <label for="exercise-prompt-input" class="tm-label">Traccia dell'esercizio</label>
+              <textarea
+                id="exercise-prompt-input"
+                class="tm-textarea"
+                data-testid="exercise-prompt-input"
+                rows="2"
+                placeholder="Descrivi la traccia o l'obiettivo didattico dell'esercizio..."
+              ></textarea>
+            </div>
+
+            <div class="tm-form-group">
+              <label for="didactic-constraints-input" class="tm-label">
+                Vincoli algoritmici e didattici <span class="tm-optional-tag">(opzionale)</span>
+              </label>
+              <textarea
+                id="didactic-constraints-input"
+                class="tm-textarea"
+                data-testid="didactic-constraints-input"
+                rows="2"
+                placeholder="Es.: non usare funzioni di libreria per l'ordinamento..."
+              ></textarea>
+            </div>
+          </section>
 
           <form id="student-attempt-form" class="tm-form" novalidate>
             <fieldset class="tm-fieldset">
@@ -501,6 +601,10 @@ export async function mountWorkspaceUI(
                   <span class="tm-stat-label">Interventi guardrail zero-data</span>
                   <span class="tm-stat-value" data-testid="stat-zero-data-interventions">0</span>
                 </div>
+                <div class="tm-stat-row">
+                  <span class="tm-stat-label">Interventi guardrail anti-soluzione</span>
+                  <span class="tm-stat-value" data-testid="stat-anti-solution-interventions">0</span>
+                </div>
               </div>
             </div>
 
@@ -716,6 +820,66 @@ export async function mountWorkspaceUI(
   const codeInput = container.querySelector<HTMLTextAreaElement>('#student-code-input')!;
   const errorInput = container.querySelector<HTMLTextAreaElement>('#compiler-error-input')!;
   const preCommitmentInput = container.querySelector<HTMLTextAreaElement>('#pre-commitment-input')!;
+
+  const curricularPresetSelect = container.querySelector<HTMLSelectElement>(
+    '#curricular-preset-select'
+  )!;
+  const aupBadge = container.querySelector<HTMLElement>('[data-testid="aup-level-badge"]')!;
+  const aupButtons = container.querySelectorAll<HTMLButtonElement>('[data-aup-level]');
+  const exercisePromptInput = container.querySelector<HTMLTextAreaElement>(
+    '#exercise-prompt-input'
+  )!;
+  const didacticConstraintsInput = container.querySelector<HTMLTextAreaElement>(
+    '#didactic-constraints-input'
+  )!;
+  const statAntiSolutionInterventionsEl = container.querySelector<HTMLElement>(
+    '[data-testid="stat-anti-solution-interventions"]'
+  );
+
+  function renderAupLevel(level: AupDidacticLevel): void {
+    const levelLabels: Record<AupDidacticLevel, string> = {
+      1: 'Livello didattico AUP 1 • concettuale',
+      2: 'Livello didattico AUP 2 • revisione',
+      3: 'Livello didattico AUP 3 • debugging',
+    };
+    if (aupBadge) {
+      aupBadge.textContent = levelLabels[level] ?? `Livello didattico AUP ${level}`;
+    }
+    aupButtons.forEach((btn) => {
+      const btnLevel = Number(btn.dataset.aupLevel);
+      const isActive = btnLevel === level;
+      btn.classList.toggle('tm-aup-btn-active', isActive);
+      btn.setAttribute('aria-checked', String(isActive));
+    });
+  }
+
+  if (curricularPresetSelect) {
+    curricularPresetSelect.addEventListener('change', () => {
+      engine.updateActivityContext({
+        curricularPreset: curricularPresetSelect.value as CurricularPresetId,
+      });
+    });
+  }
+
+  aupButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const lvl = Number(btn.dataset.aupLevel) as AupDidacticLevel;
+      engine.updateActivityContext({ aupLevel: lvl });
+      renderAupLevel(lvl);
+    });
+  });
+
+  if (exercisePromptInput) {
+    exercisePromptInput.addEventListener('input', () => {
+      engine.updateActivityContext({ exercisePrompt: exercisePromptInput.value });
+    });
+  }
+
+  if (didacticConstraintsInput) {
+    didacticConstraintsInput.addEventListener('input', () => {
+      engine.updateActivityContext({ didacticConstraints: didacticConstraintsInput.value });
+    });
+  }
 
   const dialogueList = container.querySelector<HTMLElement>('[data-testid="dialogue-turns-list"]')!;
   const scrollToBottomBtn = container.querySelector<HTMLButtonElement>(
@@ -1058,6 +1222,13 @@ export async function mountWorkspaceUI(
       statZeroDataInterventionsEl.textContent = String(snapshot.zeroDataInterventionsCount);
     }
 
+    const statAntiSolutionInterventionsEl = container.querySelector<HTMLElement>(
+      '[data-testid="stat-anti-solution-interventions"]'
+    );
+    if (statAntiSolutionInterventionsEl) {
+      statAntiSolutionInterventionsEl.textContent = String(snapshot.antiSolutionInterventionsCount);
+    }
+
     if (document.activeElement !== endpointInput) {
       endpointInput.value = snapshot.endpointUrl;
     }
@@ -1074,6 +1245,18 @@ export async function mountWorkspaceUI(
         btn.setAttribute('data-tooltip', 'Copia intervento');
       }, 1500);
     });
+  }
+
+  function createAntiSolutionNoticeElement(): HTMLElement {
+    const noticeEl = document.createElement('div');
+    noticeEl.className = 'tm-turn-guardrail-notice';
+    noticeEl.dataset.testid = 'turn-guardrail-notice';
+    noticeEl.setAttribute('role', 'note');
+    noticeEl.innerHTML = `
+      <span class="tm-guardrail-pill">Guardrail anti-soluzione</span>
+      <span>Invariante di non-sostituzione attiva: blocco di codice oscurato</span>
+    `;
+    return noticeEl;
   }
 
   function createTurnElement(
@@ -1109,7 +1292,15 @@ export async function mountWorkspaceUI(
          </details>`
       : '';
 
+    const antiSolutionAlertHtml = turn.antiSolutionIntervened
+      ? `<div class="tm-turn-guardrail-notice" data-testid="turn-guardrail-notice" role="note">
+           <span class="tm-guardrail-pill">Guardrail anti-soluzione</span>
+           <span>Invariante di non-sostituzione attiva: blocco di codice oscurato</span>
+         </div>`
+      : '';
+
     article.innerHTML = `
+      ${antiSolutionAlertHtml}
       ${reasoningBlock}
       <div class="tm-turn-body"></div>
       <footer class="tm-turn-actions">
@@ -1218,6 +1409,16 @@ export async function mountWorkspaceUI(
     renderHeaderState(snapshot);
     updateRequestButtonState(isGenerating, snapshot);
     renderStageIndicator(snapshot.currentStage);
+    if (curricularPresetSelect) {
+      curricularPresetSelect.value = snapshot.activityContext.curricularPreset;
+    }
+    renderAupLevel(snapshot.activityContext.aupLevel);
+    if (exercisePromptInput && document.activeElement !== exercisePromptInput) {
+      exercisePromptInput.value = snapshot.activityContext.exercisePrompt;
+    }
+    if (didacticConstraintsInput && document.activeElement !== didacticConstraintsInput) {
+      didacticConstraintsInput.value = snapshot.activityContext.didacticConstraints;
+    }
     if (udlLevelSelect) udlLevelSelect.value = snapshot.udlConfig.linguisticComplexity;
     if (udlShortRepliesCb) udlShortRepliesCb.checked = snapshot.udlConfig.shortHighReadabilityReplies;
     if (udlMicroStepsCb) udlMicroStepsCb.checked = snapshot.udlConfig.microStepBreakdown;
@@ -1345,8 +1546,15 @@ export async function mountWorkspaceUI(
           collapseReasoningBlock(tutorEl);
         }
         tutorEl.bodyEl.hidden = false;
-        tutorEl.bodyEl.dataset.rawMarkdown = streamAccum;
-        setRenderedMarkdown(tutorEl.bodyEl, streamAccum);
+
+        const currentSnap = engine.getSnapshot();
+        const inspected = inspectAndApplyAntiSolution(
+          streamAccum,
+          currentSnap.activityContext.aupLevel,
+          currentSnap.activityContext.curricularPreset
+        );
+        tutorEl.bodyEl.dataset.rawMarkdown = inspected.cleanContent;
+        setRenderedMarkdown(tutorEl.bodyEl, inspected.cleanContent);
         scrollToLatest();
       },
     });
@@ -1453,6 +1661,19 @@ export async function mountWorkspaceUI(
       resolvedPendingTutor.bodyEl.dataset.rawMarkdown = finalTutorTurn.content;
       setRenderedMarkdown(resolvedPendingTutor.bodyEl, finalTutorTurn.content);
       resolvedPendingTutor.actionsEl.hidden = false;
+
+      if (finalTutorTurn.antiSolutionIntervened) {
+        resolvedPendingTutor.article.insertBefore(
+          createAntiSolutionNoticeElement(),
+          resolvedPendingTutor.bodyEl
+        );
+      }
+
+      if (statAntiSolutionInterventionsEl) {
+        statAntiSolutionInterventionsEl.textContent = String(
+          finalSnap.antiSolutionInterventionsCount
+        );
+      }
     } else {
       renderSnapshot(finalSnap);
     }
