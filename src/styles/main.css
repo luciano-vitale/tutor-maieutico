@@ -1,3 +1,8 @@
+@import "@fontsource/atkinson-hyperlegible/400.css";
+@import "@fontsource/atkinson-hyperlegible/400-italic.css";
+@import "@fontsource/atkinson-hyperlegible/700.css";
+@import "@fontsource/atkinson-hyperlegible/700-italic.css";
+
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
@@ -134,7 +139,7 @@ body {
   gap: 0.55rem;
   padding: 0.35rem 1.25rem;
   background: var(--tm-surface-subtle);
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   color: var(--tm-text-muted);
   border-top: 1px solid var(--tm-border);
 }
@@ -167,11 +172,11 @@ body {
 }
 
 .tm-pill {
-  padding: 0.08rem 0.48rem;
+  padding: 0.1rem 0.52rem;
   border-radius: 9999px;
   background: var(--tm-pill-bg);
   border: 1px solid var(--tm-border);
-  font-size: 0.69rem;
+  font-size: 0.78rem;
   color: var(--tm-text-muted);
 }
 
@@ -209,7 +214,7 @@ body {
 }
 
 .tm-subtitle {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   color: var(--tm-text-muted);
   display: inline-flex;
   align-items: baseline;
@@ -236,9 +241,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.26rem 0.6rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 9999px;
-  font-size: 0.74rem;
+  font-size: 0.84rem;
   font-weight: 500;
   background: transparent;
   border: 1px solid var(--tm-border);
@@ -294,7 +299,7 @@ body {
 .tm-textarea,
 .tm-composer-input {
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--tm-border-strong);
   border-radius: 0.5rem;
@@ -312,16 +317,16 @@ body {
 
 .tm-model-select {
   max-width: 12.5rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   padding: 0.28rem 0.5rem;
   border-color: var(--tm-border);
   background: transparent;
 }
 
 .tm-endpoint-input {
-  width: 12rem;
+  width: 13.5rem;
   font-family: var(--tm-font-mono);
-  font-size: 0.74rem;
+  font-size: 0.85rem;
   padding: 0.28rem 0.5rem;
   border-color: var(--tm-border);
   background: transparent;
@@ -342,7 +347,7 @@ body {
   background: transparent;
   color: var(--tm-text-muted);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
@@ -374,7 +379,7 @@ body {
   color: var(--tm-tooltip-text);
   padding: 0.24rem 0.5rem;
   border-radius: 0.35rem;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 500;
   white-space: nowrap;
   opacity: 0;
@@ -436,7 +441,7 @@ body {
   border: 1px solid var(--tm-warning-border);
   color: var(--tm-warning-text);
   border-radius: 0.5rem;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 500;
 }
 
@@ -454,12 +459,12 @@ body {
 }
 
 .tm-zero-data-header {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--tm-danger-text);
 }
 
 .tm-zero-data-lead {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   color: var(--tm-text-secondary);
   margin: 0;
 }
@@ -467,7 +472,7 @@ body {
 .tm-zero-data-list {
   margin: 0.2rem 0;
   padding-left: 1.25rem;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   color: var(--tm-text);
   display: flex;
   flex-direction: column;
@@ -486,7 +491,7 @@ body {
 }
 
 .tm-zero-data-udl-text {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   margin: 0;
   color: var(--tm-text-secondary);
 }
@@ -496,7 +501,7 @@ body {
   border: none;
   padding: 0;
   color: var(--tm-brand-blue);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
@@ -522,7 +527,7 @@ body {
   color: #ffffff;
   border: none;
   border-radius: 0.4rem;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.1s ease;
@@ -557,7 +562,7 @@ body {
 }
 
 .tm-udl-title {
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--tm-text);
 }
@@ -566,7 +571,7 @@ body {
   background: none;
   border: none;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   cursor: pointer;
   color: var(--tm-text-muted);
   padding: 0.15rem 0.35rem;
@@ -583,7 +588,7 @@ body {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
 }
 
 .tm-checkbox-group {
@@ -595,7 +600,7 @@ body {
   align-items: flex-start;
   gap: 0.5rem;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 400;
   line-height: 1.4;
   color: var(--tm-text);
@@ -651,7 +656,7 @@ body {
   padding: 1.1rem 1rem;
   gap: 0.85rem;
   overflow-y: auto;
-  width: 340px;
+  width: clamp(320px, 24vw, 380px);
   flex-shrink: 0;
 }
 
@@ -661,7 +666,7 @@ body {
   padding: 1.1rem 1rem;
   gap: 0.85rem;
   overflow-y: auto;
-  width: 320px;
+  width: clamp(300px, 22vw, 360px);
   flex-shrink: 0;
 }
 
@@ -692,7 +697,7 @@ body {
   min-width: 0;
   display: block;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1.35;
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--tm-border-strong);
@@ -731,7 +736,7 @@ body {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   padding: 0.45rem 0.65rem;
 }
 
@@ -755,7 +760,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   line-height: 1.35;
 }
 
@@ -765,7 +770,7 @@ body {
 
 .tm-stat-value {
   font-family: var(--tm-font-mono);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--tm-text);
   white-space: nowrap;
@@ -780,7 +785,7 @@ body {
 
 .tm-panel-title {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--tm-text-muted);
 }
@@ -807,7 +812,7 @@ body {
 
 .tm-activity-context-title {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--tm-text);
 }
@@ -815,7 +820,7 @@ body {
 .tm-aup-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 600;
   padding: 0.15rem 0.45rem;
   border-radius: 0.35rem;
@@ -837,7 +842,7 @@ body {
   justify-content: center;
   gap: 0.15rem;
   padding: 0.45rem 0.25rem;
-  font-size: 0.73rem;
+  font-size: 0.82rem;
   font-family: inherit;
   border-radius: 0.45rem;
   border: 1px solid var(--tm-border);
@@ -850,14 +855,14 @@ body {
 }
 
 .tm-aup-level-num {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
   line-height: 1;
   color: inherit;
 }
 
 .tm-aup-level-text {
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 500;
   line-height: 1.1;
   color: inherit;
@@ -884,7 +889,7 @@ body {
   padding: 0.45rem 0.65rem;
   margin-bottom: 0.6rem;
   border-radius: 0.45rem;
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   line-height: 1.35;
   background: rgba(220, 38, 38, 0.08);
   border: 1px solid rgba(220, 38, 38, 0.25);
@@ -893,7 +898,7 @@ body {
 
 .tm-guardrail-pill {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -923,14 +928,14 @@ body {
   align-items: center;
   gap: 0.38rem;
   font-weight: 500;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--tm-text-secondary);
 }
 
 .tm-optional-tag {
   font-weight: 400;
   color: var(--tm-text-muted);
-  font-size: 0.73rem;
+  font-size: 0.8rem;
 }
 
 .tm-required-marker {
@@ -946,14 +951,14 @@ body {
 
 .tm-field-hint {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   color: var(--tm-text-muted);
 }
 
 .tm-code-textarea,
 .tm-error-textarea {
   font-family: var(--tm-font-mono);
-  font-size: 0.79rem;
+  font-size: 0.88rem;
   line-height: 1.5;
 }
 
@@ -981,7 +986,7 @@ body {
   background: var(--tm-primary-bg);
   color: var(--tm-primary-text);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.12s ease, opacity 0.15s ease;
@@ -1050,7 +1055,7 @@ body {
 .tm-empty-dialogue {
   margin: 0;
   color: var(--tm-text-muted);
-  font-size: 0.84rem;
+  font-size: 0.92rem;
 }
 
 /* Conversation Turns */
@@ -1081,14 +1086,14 @@ body {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--tm-text-muted);
   margin-bottom: 0.35rem;
 }
 
 .tm-sent-pill {
   align-self: flex-end;
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   padding: 0.08rem 0.42rem;
   margin-bottom: 0.25rem;
   border-radius: 9999px;
@@ -1103,7 +1108,7 @@ body {
   border-radius: 0.5rem;
   background: var(--tm-surface-subtle);
   padding: 0.45rem 0.75rem;
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   color: var(--tm-text-muted);
 }
 
@@ -1122,7 +1127,7 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--tm-font-mono);
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   line-height: 1.45;
   color: var(--tm-text-muted);
 }
@@ -1134,7 +1139,7 @@ body {
   border-radius: 0.5rem;
   background: var(--tm-surface-subtle);
   padding: 0.45rem 0.75rem;
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   color: var(--tm-text-muted);
 }
 
@@ -1150,13 +1155,13 @@ body {
   border-top: 0;
   white-space: pre-wrap;
   font-family: var(--tm-font-mono);
-  font-size: 0.74rem;
+  font-size: 0.82rem;
 }
 
 .tm-turn-body {
   white-space: normal;
   word-break: break-word;
-  font-size: 0.94rem;
+  font-size: 1rem;
   line-height: 1.62;
   color: var(--tm-text);
 }
@@ -1186,21 +1191,21 @@ body {
 }
 
 .tm-turn-body h1 {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
 }
 
 .tm-turn-body h2 {
-  font-size: 1.05rem;
+  font-size: 1.12rem;
 }
 
 .tm-turn-body h3 {
-  font-size: 0.92rem;
+  font-size: 1.02rem;
 }
 
 .tm-turn-body h4,
 .tm-turn-body h5,
 .tm-turn-body h6 {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
 }
 
 .tm-turn-body pre {
@@ -1211,7 +1216,7 @@ body {
   border: 1px solid var(--tm-border);
   overflow-x: auto;
   font-family: var(--tm-font-mono);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   line-height: 1.5;
 }
 
@@ -1232,7 +1237,7 @@ body {
 
 .tm-turn-body :not(pre) > code {
   font-family: var(--tm-font-mono);
-  font-size: 0.84em;
+  font-size: 0.9em;
   padding: 0.12rem 0.36rem;
   border-radius: 0.32rem;
   background: var(--tm-surface-subtle);
@@ -1276,7 +1281,7 @@ body {
 .tm-turn-body table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9em;
+  font-size: 0.95em;
   text-align: left;
   border-spacing: 0;
   margin: 0;
@@ -1349,6 +1354,7 @@ body {
   background: transparent;
   color: var(--tm-text-muted);
   font-family: inherit;
+  font-size: 0.85rem;
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
@@ -1503,8 +1509,8 @@ body {
   background: transparent;
   padding: 0.35rem 0;
   resize: none;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 1rem;
+  line-height: 1.45;
   field-sizing: content;
   min-height: 1.4rem;
   max-height: 10rem;
@@ -1551,7 +1557,7 @@ body {
 .tm-composer-footnote {
   margin: 0;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: var(--tm-text-muted);
 }
 
@@ -1571,7 +1577,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--tm-text);
   cursor: pointer;
@@ -1764,13 +1770,41 @@ body {
    Accessibilità visiva UI (UDL / CU-12)
    ========================================================================== */
 
+html[data-font-scale="large"] {
+  font-size: 115%;
+}
+
+html[data-font-scale="xlarge"] {
+  font-size: 130%;
+}
+
 html.tm-high-readability-font,
 html.tm-high-readability-font body,
-html.tm-high-readability-font input,
-html.tm-high-readability-font textarea,
 html.tm-high-readability-font button,
-html.tm-high-readability-font select {
-  font-family: "Atkinson Hyperlegible", "OpenDyslexic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+html.tm-high-readability-font select,
+html.tm-high-readability-font textarea:not(.tm-code-textarea):not(.tm-error-textarea),
+html.tm-high-readability-font input:not(.tm-endpoint-input) {
+  font-family: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* Preservazione rigorosa del font monospazio per elementi tecnici e codice */
+.tm-endpoint-input,
+.tm-stat-value,
+.tm-code-textarea,
+.tm-error-textarea,
+.tm-reasoning-body,
+.tm-reasoning-3lines-content,
+.tm-guardrail-detail,
+.tm-turn-content code,
+.tm-turn-content pre,
+.tm-turn-body code,
+.tm-turn-body pre,
+.tm-rubberduck-code,
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--tm-font-mono) !important;
 }
 
 html.tm-expanded-spacing body {

@@ -54,7 +54,7 @@ La modalità statica di auto-diagnosi guidata che funge da alternativa equivalen
 _Avoid_: Pagina di errore, blocco applicativo, modalità degradata inutilizzabile
 
 **Scaffolding cognitivo**:
-L'insieme di adattamenti universali della comunicazione (complessità linguistica biennio/triennio, scomposizione in micro-passaggi, alta leggibilità) selezionabili nella sessione secondo i principi dell'*Universal Design for Learning* (`UDL`) per supportare anche misure compensative PDP/PEI (`CU-12`) senza mai trattare dati sanitari o diagnosi.
+L'insieme di adattamenti universali della comunicazione e della presentazione visiva (complessità linguistica biennio/triennio, scomposizione in micro-passaggi, font ad alta leggibilità, scala di ingrandimento dei caratteri, spaziatura espansa e alto contrasto) selezionabili nella sessione secondo i principi dell'*Universal Design for Learning* (`UDL`) per supportare anche misure compensative PDP/PEI (`CU-12`) senza mai trattare dati sanitari o diagnosi.
 _Avoid_: Modalità BES, profilo DSA, profilo disabilità, etichetta clinica
 
 **Livello didattico AUP**:

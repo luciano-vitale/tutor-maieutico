@@ -250,6 +250,14 @@ export async function mountWorkspaceUI(
             </div>
             <div class="tm-udl-accessibility-section">
               <span class="tm-udl-section-subtitle">Accessibilità visiva interfaccia</span>
+              <div class="tm-form-group">
+                <label for="udl-font-scale" class="tm-field-label">Dimensione carattere</label>
+                <select id="udl-font-scale" class="tm-select" data-testid="udl-font-scale">
+                  <option value="default" selected>Normale (100%)</option>
+                  <option value="large">Grande (115%)</option>
+                  <option value="xlarge">Molto grande (130%)</option>
+                </select>
+              </div>
               <div class="tm-form-group tm-checkbox-group">
                 <label class="tm-checkbox-label">
                   <input type="checkbox" id="udl-high-readability-font" data-testid="udl-high-readability-font" />
@@ -690,6 +698,7 @@ export async function mountWorkspaceUI(
   const udlShortRepliesCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-short-replies"]');
   const udlMicroStepsCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-micro-steps"]');
   const udlTextSchemasCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-text-schemas"]');
+  const udlFontScaleSelect = udlScaffoldingPanel.querySelector<HTMLSelectElement>('[data-testid="udl-font-scale"]');
   const udlHighReadabilityFontCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-readability-font"]');
   const udlExpandedSpacingCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-expanded-spacing"]');
   const udlHighContrastCb = udlScaffoldingPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-contrast"]');
@@ -720,6 +729,16 @@ export async function mountWorkspaceUI(
       engine.updateUdlConfig({
         textLogicalSchemas: udlTextSchemasCb.checked,
       });
+    });
+  }
+  if (udlFontScaleSelect) {
+    udlFontScaleSelect.addEventListener('change', () => {
+      const scale = udlFontScaleSelect.value;
+      if (scale === 'default') {
+        delete document.documentElement.dataset.fontScale;
+      } else {
+        document.documentElement.dataset.fontScale = scale;
+      }
     });
   }
   if (udlHighReadabilityFontCb) {

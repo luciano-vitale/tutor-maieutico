@@ -1406,13 +1406,29 @@ describe('WorkspaceUI', () => {
     });
 
     // Controlli accessibilità visiva UI
+    const fontScaleSelect = udlPanel.querySelector<HTMLSelectElement>('[data-testid="udl-font-scale"]')!;
     const fontCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-readability-font"]')!;
     const spacingCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-expanded-spacing"]')!;
     const contrastCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-contrast"]')!;
 
+    expect(fontScaleSelect).not.toBeNull();
     expect(fontCb).not.toBeNull();
     expect(spacingCb).not.toBeNull();
     expect(contrastCb).not.toBeNull();
+
+    // Selezione scala font
+    expect(document.documentElement.dataset.fontScale).toBeUndefined();
+    fontScaleSelect.value = 'large';
+    fontScaleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.dataset.fontScale).toBe('large');
+
+    fontScaleSelect.value = 'xlarge';
+    fontScaleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.dataset.fontScale).toBe('xlarge');
+
+    fontScaleSelect.value = 'default';
+    fontScaleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.documentElement.dataset.fontScale).toBeUndefined();
 
     // Attivazione font ad alta leggibilità
     fontCb.checked = true;
@@ -1460,6 +1476,12 @@ describe('WorkspaceUI', () => {
     contrastCb.checked = false;
     contrastCb.dispatchEvent(new Event('change', { bubbles: true }));
     expect(document.documentElement.classList.contains('tm-high-contrast')).toBe(false);
+
+    // Verifica configurazione offline font ad alta leggibilità, scala UDL e protezione monospazio
+    expect(MAIN_CSS).toMatch(/@fontsource\/atkinson-hyperlegible/);
+    expect(MAIN_CSS).toMatch(/html\[data-font-scale="large"\]/);
+    expect(MAIN_CSS).toMatch(/html\[data-font-scale="xlarge"\]/);
+    expect(MAIN_CSS).toMatch(/\.tm-endpoint-input[\s\S]*?font-family:\s*var\(--tm-font-mono\)\s*!important/);
   });
 });
 
