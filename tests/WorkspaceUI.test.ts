@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MaieuticSessionEngine } from '../src/domain/MaieuticSessionEngine';
 import { mountWorkspaceUI } from '../src/ui/WorkspaceUI';
 import { FakeEnvironmentPort, FakeInferencePort } from './fakes';
+
+const MAIN_CSS = readFileSync(resolve(__dirname, '../src/styles/main.css'), 'utf-8');
 
 describe('WorkspaceUI', () => {
   beforeEach(() => {
@@ -1246,6 +1250,26 @@ describe('WorkspaceUI', () => {
     // Allo Stadio 1 il pulsante reset è disabilitato
     expect(resetStageBtn.disabled).toBe(true);
 
+    // Tutte e 4 le icone della barra delle azioni dell'intervento devono essere SVG 16x16 stroke-width 1.75 come le icone di sistema
+    const turnActionSvgs = [
+      stageIndicator.querySelector('svg'),
+      stillStuckBtn.querySelector('svg'),
+      copyBtn.querySelector('svg'),
+      resetStageBtn.querySelector('svg'),
+    ];
+    for (const svg of turnActionSvgs) {
+      expect(svg).not.toBeNull();
+      expect(svg?.getAttribute('width')).toBe('16');
+      expect(svg?.getAttribute('height')).toBe('16');
+      expect(svg?.getAttribute('viewBox')).toBe('0 0 24 24');
+      expect(svg?.getAttribute('stroke-width')).toBe('1.75');
+    }
+
+    // Compensazione ottica: i cerchi esterni dell'indicatore dello stadio e del salvagente usano r="10" (20x20 su viewBox 24x24) e il reset usa raggio 10
+    expect(stageIndicator.querySelector('svg circle')?.getAttribute('r')).toBe('10');
+    expect(stillStuckBtn.querySelector('svg circle')?.getAttribute('r')).toBe('10');
+    expect(resetStageBtn.querySelector('svg path')?.getAttribute('d')).toContain('a10 10');
+
     // Click su "Sono ancora bloccato": avanza a Stadio 2 e genera un nuovo intervento
     const completeSpy = vi.spyOn(inference, 'completeChat');
     stillStuckBtn.click();
@@ -1401,9 +1425,28 @@ describe('WorkspaceUI', () => {
     expect(document.documentElement.classList.contains('tm-expanded-spacing')).toBe(true);
 
     // Attivazione alto contrasto
+    const styleEl = document.createElement('style');
+    styleEl.textContent = MAIN_CSS;
+    document.head.appendChild(styleEl);
+
     contrastCb.checked = true;
     contrastCb.dispatchEvent(new Event('change', { bubbles: true }));
     expect(document.documentElement.classList.contains('tm-high-contrast')).toBe(true);
+
+    // Verifica contrasto del compositore maieutico e autonomia dai token chiari di data-theme="light"
+    const rootStyle = window.getComputedStyle(document.documentElement);
+    expect(rootStyle.getPropertyValue('--tm-composer-bg').trim()).toBe('#050505');
+    expect(rootStyle.getPropertyValue('--tm-surface-hover').trim()).toBe('#1f1f1f');
+    expect(rootStyle.getPropertyValue('--tm-pill-bg').trim()).toBe('#121212');
+    expect(rootStyle.getPropertyValue('--tm-primary-bg-hover').trim()).toBe('#e5e5e5');
+    expect(rootStyle.getPropertyValue('--tm-tooltip-bg').trim()).toBe('#ffffff');
+    expect(rootStyle.getPropertyValue('--tm-tooltip-text').trim()).toBe('#000000');
+
+    const composerEl = root.querySelector<HTMLElement>('.tm-composer')!;
+    const composerStyle = window.getComputedStyle(composerEl);
+    expect(composerStyle.borderWidth).toBe('2px');
+
+    styleEl.remove();
 
     // Disattivazione
     fontCb.checked = false;

@@ -34,12 +34,12 @@ Il controllo post-inferenza eseguito sul client che ispeziona la risposta del mo
 _Avoid_: Moderatore cloud, censura generica
 
 **Pre-impegno cognitivo**:
-Il requisito pedagogico che richiede allo studente di esplicitare la propria ipotesi iniziale, il tentativo effettuato o il punto esatto di blocco prima di poter richiedere un intervento maieutico sul proprio codice o sulla traccia.
+Il requisito pedagogico che richiede allo studente di esplicitare la propria ipotesi iniziale, il tentativo effettuato o il punto esatto di blocco prima di poter richiedere un intervento maieutico sul proprio codice o sulla traccia, escludendo richieste dirette di soluzione prive di elaborazione autonoma.
 _Avoid_: Prompt libero, richiesta diretta di soluzione
 
 **Progressione maieutica**:
-La sequenza strutturata in 4 stadi con cui il tutor maieutico risponde alle difficoltà persistenti dello studente senza mai cedere la soluzione: `Stadio 1` (domanda esplorativa), `Stadio 2` (scomposizione e trace a mano), `Stadio 3` (analogia o micro-sintassi astratta), `Stadio 4` (sintesi del blocco concettuale ed escalation al docente in laboratorio).
-_Avoid_: Loop di domande infinite, suggerimento progressivo fino alla soluzione completa
+La sequenza strutturata in 4 stadi con cui il tutor maieutico risponde alle difficoltà persistenti dello studente (incluse le richieste dirette di soluzione a sessione avviata) senza mai cedere la soluzione, erogando rigorosamente la forma di supporto dello stadio attivo: `Stadio 1` (domanda esplorativa), `Stadio 2` (scomposizione e trace a mano), `Stadio 3` (analogia o micro-sintassi astratta), `Stadio 4` (sintesi del blocco concettuale ed escalation al docente in laboratorio).
+_Avoid_: Loop di domande infinite, regressione a domande generiche di Stadio 1, suggerimento progressivo fino alla soluzione completa
 
 **Escalation al docente**:
 L'esito conclusivo dello `Stadio 4` della progressione maieutica in cui il tutor maieutico interrompe la generazione di ulteriori indizi automatici, sintetizza in due punti l'ostacolo concettuale residuo e invita esplicitamente lo studente ad alzare la mano per richiedere l'intervento umano del docente in laboratorio (*Human-in-the-Loop*).

@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { MaieuticSessionEngine } from '../src/domain/MaieuticSessionEngine';
+import {
+  MaieuticSessionEngine,
+  isDirectSolutionRequest,
+  isMeaningfulPreCommitment,
+} from '../src/domain/MaieuticSessionEngine';
 import { FakeEnvironmentPort, FakeInferencePort } from './fakes';
 
 describe('MaieuticSessionEngine', () => {
@@ -503,6 +507,100 @@ describe('MaieuticSessionEngine', () => {
 
     // ADR-0002: Divieto assoluto di etichette o termini clinico-sanitari nel System Prompt
     expect(stage4SystemPrompt).not.toMatch(/\b(DSA|BES|PDP|PEI|disabilit|diagnos)\b/i);
+  });
+
+  test('riconosce le richieste dirette di soluzione, le respinge come pre-impegno cognitivo puro ma accetta i casi misti con ipotesi reale', async () => {
+    expect(isDirectSolutionRequest('Dammi la soluzione!')).toBe(true);
+    expect(isDirectSolutionRequest('Mi dai subito la soluzione completa per favore?')).toBe(true);
+    expect(isDirectSolutionRequest('Scrivimi il codice corretto in Python')).toBe(true);
+    expect(isDirectSolutionRequest('Correggimi tu il codice')).toBe(true);
+    expect(isDirectSolutionRequest('Dimmi cosa devo scrivere nella condizione')).toBe(true);
+    expect(isDirectSolutionRequest('Ho usato un ciclo while ma non incrementa il contatore')).toBe(
+      false
+    );
+
+    // Pura richiesta di soluzione (anche > 15 caratteri e >= 3 parole) -> respinta come pre-impegno
+    expect(isMeaningfulPreCommitment('Dammi la soluzione!')).toBe(false);
+    expect(isMeaningfulPreCommitment('Mi dai subito la soluzione completa per favore?')).toBe(
+      false
+    );
+    expect(isMeaningfulPreCommitment('Scrivimi il codice completo dell\'esercizio')).toBe(false);
+
+    // Caso misto (ipotesi reale + richiesta di soluzione) -> accettato come pre-impegno
+    expect(
+      isMeaningfulPreCommitment(
+        'Ho provato a convertire l\'input con int ma ottengo ValueError, mi dai la soluzione?'
+      )
+    ).toBe(true);
+
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    // Avvio da chat con pura richiesta diretta di soluzione: viene respinto dal controllo sul pre-impegno
+    const rejected = await engine.requestMaieuticIntervention(
+      'Dammi subito la soluzione completa!'
+    );
+    expect(rejected.status).toBe('rejected_pre_commitment');
+    expect(engine.getSnapshot().cognitivePreCommitment).toBe('');
+  });
+
+  test('a sessione avviata tratta le richieste dirette di soluzione come blocco cognitivo e vincola il modello allo stadio attivo senza sporcare la UI', async () => {
+    const inference = new FakeInferencePort();
+    const env = new FakeEnvironmentPort();
+    const engine = new MaieuticSessionEngine(inference, env);
+
+    engine.updateStudentDraft({
+      studentCode: 'n = input("Numero: ")\nprint(n * 2)',
+      cognitivePreCommitment:
+        'Vorrei raddoppiare il numero inserito ma stampa due volte la cifra.',
+    });
+
+    // Turno 1: avvio sessione (Stadio 1), con codice allegato -> non deve invitare ridondantemente a usare il pannello di contesto
+    await engine.requestMaieuticIntervention();
+    expect(engine.getSnapshot().currentStage).toBe(1);
+    expect(inference.lastMessages[0].content).not.toContain(
+      'non ha ancora allegato codice o messaggi di errore'
+    );
+
+    // Avanziamo a Stadio 3 (analogia o micro-sintassi astratta)
+    engine.advanceMaieuticStage(); // 2
+    engine.advanceMaieuticStage(); // 3
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    // 1ª richiesta diretta di soluzione nello Stadio 3: mantiene lo Stadio 3 e inietta il vincolo di Stadio 3 nel messaggio al modello
+    inference.cannedReply =
+      'Non posso darti la soluzione pronta, ma immagina un modulo cartaceo: ```python\neta_testo = "18"\neta_num = int(eta_testo)\n``` Come applichi questa conversione alla tua variabile `n`?';
+    const solReq1 = await engine.requestMaieuticIntervention('Dammi la soluzione!');
+    expect(solReq1.status).toBe('ok');
+    expect(engine.getSnapshot().currentStage).toBe(3);
+
+    // Il testo visibile nella bolla dello studente in UI resta pulito ("Dammi la soluzione!")
+    const studentTurns = engine.getSnapshot().turns.filter((t) => t.role === 'student');
+    expect(studentTurns[studentTurns.length - 1].content).toBe('Dammi la soluzione!');
+
+    // Il payload inviato al modello contiene il rinforzo vincolante per lo Stadio 3 (analogia o micro-sintassi astratta, divieto di sole domande da Stadio 1)
+    const lastUserMessageToModel =
+      inference.lastMessages[inference.lastMessages.length - 1].content;
+    expect(lastUserMessageToModel).toContain('Dammi la soluzione!');
+    expect(lastUserMessageToModel).toContain('VINCOLO DI STADIO 3');
+    expect(lastUserMessageToModel).toContain(
+      'NON limitarti a una lista di domande esplorative da Stadio 1'
+    );
+
+    // 2ª richiesta consecutiva di soluzione: fa avanzare automaticamente allo Stadio 4 (escalation al docente)
+    inference.cannedReply =
+      '1. Conversione esplicita da stringa a intero.\n2. Comportamento dell\'operatore * su stringhe.\nAlza la mano per confrontarti con il docente in laboratorio.';
+    const solReq2 = await engine.requestMaieuticIntervention('Dimmi cosa devo scrivere!');
+    expect(solReq2.status).toBe('ok');
+    expect(engine.getSnapshot().currentStage).toBe(4);
+
+    const stage4UserMessageToModel =
+      inference.lastMessages[inference.lastMessages.length - 1].content;
+    expect(stage4UserMessageToModel).toContain('VINCOLO DI STADIO 4');
+    expect(stage4UserMessageToModel).toContain(
+      'NON porre assolutamente nuove domande guida tecniche'
+    );
   });
 });
 

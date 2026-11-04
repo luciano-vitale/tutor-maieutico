@@ -407,7 +407,8 @@ body {
   transform: translate(-50%, 3px);
 }
 
-.tm-header [data-tooltip]::after {
+.tm-header [data-tooltip]::after,
+.tm-panel-header [data-tooltip]::after {
   bottom: auto;
   top: calc(100% + 6px);
 }
@@ -538,14 +539,15 @@ body {
 
 /* UDL Scaffolding Panel */
 .tm-udl-panel {
-  margin: 0.65rem 0.85rem;
-  padding: 0.85rem;
+  margin: 0 0 0.8rem 0;
+  padding: 0.75rem;
   background: var(--tm-surface-subtle);
   border: 1px solid var(--tm-border);
-  border-radius: 0.5rem;
+  border-radius: 0.55rem;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.6rem;
+  font-family: var(--tm-font-sans);
 }
 
 .tm-udl-header {
@@ -555,24 +557,59 @@ body {
 }
 
 .tm-udl-title {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--tm-text);
 }
 
 .tm-udl-close-btn {
   background: none;
   border: none;
-  font-size: 0.85rem;
+  font-family: inherit;
+  font-size: 0.82rem;
   cursor: pointer;
   color: var(--tm-text-muted);
-  padding: 0.1rem 0.3rem;
-  border-radius: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.35rem;
+  line-height: 1;
 }
 
 .tm-udl-close-btn:hover {
   color: var(--tm-text);
   background: var(--tm-surface-hover);
+}
+
+.tm-udl-panel .tm-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 0.82rem;
+}
+
+.tm-checkbox-group {
+  margin: 0;
+}
+
+.tm-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--tm-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tm-checkbox-label input[type="checkbox"] {
+  margin: 0.18rem 0 0;
+  width: 0.92rem;
+  height: 0.92rem;
+  flex-shrink: 0;
+  accent-color: var(--tm-brand-blue, #267eaa);
+  cursor: pointer;
 }
 
 /* Continuous Three-Panel Workspace (Left Context + Main Canvas + Right Settings) */
@@ -1293,67 +1330,55 @@ body {
 .tm-turn-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   margin-top: 0.4rem;
 }
 
-.tm-turn-action-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 0;
-  border-radius: 0.38rem;
-  background: transparent;
-  color: var(--tm-text-muted);
-  cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease;
-}
-
-.tm-turn-action-btn:hover:not(:disabled) {
-  color: var(--tm-text);
-  background: var(--tm-surface-hover);
-}
-
-.tm-turn-action-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
+.tm-turn-action-btn,
 .tm-turn-action-badge {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 0;
-  border-radius: 0.38rem;
+  min-width: 1.95rem;
+  width: 1.95rem;
+  height: 1.95rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
   background: transparent;
   color: var(--tm-text-muted);
-  cursor: default;
-  user-select: none;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  font-family: inherit;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
+.tm-turn-action-btn {
+  cursor: pointer;
+}
+
+.tm-turn-action-badge {
+  cursor: default;
+  user-select: none;
+}
+
+.tm-turn-action-btn:hover:not(:disabled),
 .tm-turn-action-badge:hover {
   color: var(--tm-text);
   background: var(--tm-surface-hover);
 }
 
-.tm-stage-badge-circle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
+.tm-turn-action-btn:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.tm-turn-action-btn:disabled > svg {
+  opacity: 0.35;
+}
+
+.tm-stage-badge-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 /* Subtle Neutral Shimmer Thinking Bars */
@@ -1730,11 +1755,9 @@ body {
 }
 
 .tm-udl-section-subtitle {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--tm-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--tm-text-secondary);
 }
 
 /* ==========================================================================
@@ -1756,6 +1779,7 @@ html.tm-expanded-spacing body {
   word-spacing: 0.08em !important;
 }
 
+html.tm-expanded-spacing .tm-turn-body,
 html.tm-expanded-spacing .tm-turn-content,
 html.tm-expanded-spacing .tm-textarea,
 html.tm-expanded-spacing .tm-composer-input {
@@ -1765,11 +1789,14 @@ html.tm-expanded-spacing .tm-composer-input {
 }
 
 html.tm-high-contrast {
+  color-scheme: dark !important;
   --tm-canvas-bg: #000000 !important;
   --tm-sidebar-bg: #000000 !important;
   --tm-surface: #0a0a0a !important;
   --tm-surface-subtle: #121212 !important;
+  --tm-surface-hover: #1f1f1f !important;
   --tm-input-bg: #050505 !important;
+  --tm-composer-bg: #050505 !important;
   --tm-border: #ffffff !important;
   --tm-border-strong: #ffffff !important;
   --tm-border-focus: #ffff00 !important;
@@ -1777,17 +1804,34 @@ html.tm-high-contrast {
   --tm-text-secondary: #ffffff !important;
   --tm-text-muted: #e5e5e5 !important;
   --tm-primary-bg: #ffffff !important;
+  --tm-primary-bg-hover: #e5e5e5 !important;
   --tm-primary-text: #000000 !important;
   --tm-student-bubble-bg: #141414 !important;
   --tm-student-bubble-text: #ffffff !important;
+  --tm-pill-bg: #121212 !important;
+  --tm-danger: #ff4d4d !important;
+  --tm-danger-bg: #1f0505 !important;
+  --tm-danger-text: #fecaca !important;
+  --tm-online: #22c55e !important;
+  --tm-online-text: #bbf7d0 !important;
+  --tm-warning-bg: #1f1a05 !important;
+  --tm-warning-border: #fde047 !important;
+  --tm-warning-text: #fef08a !important;
+  --tm-tooltip-bg: #ffffff !important;
+  --tm-tooltip-text: #000000 !important;
 }
 
+html.tm-high-contrast .tm-turn-student,
 html.tm-high-contrast .tm-turn-bubble,
+html.tm-high-contrast .tm-composer,
 html.tm-high-contrast .tm-input,
 html.tm-high-contrast .tm-textarea,
 html.tm-high-contrast .tm-stage-pill,
 html.tm-high-contrast .tm-stage-btn,
+html.tm-high-contrast .tm-turn-action-btn,
+html.tm-high-contrast .tm-turn-action-badge,
 html.tm-high-contrast .tm-icon-btn {
+  border-style: solid !important;
   border-width: 2px !important;
   border-color: #ffffff !important;
 }

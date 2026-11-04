@@ -163,33 +163,75 @@ export interface RequestInterventionOptions {
 const MIN_PRE_COMMITMENT_CHARS = 15;
 const MIN_PRE_COMMITMENT_WORDS = 3;
 
+const DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX =
+  /\b(?:(?:mi\s+)?(?:da(?:mmi|i|resti|re)|di(?:mmi|ci|resti|re)|mostra(?:mi|re)?|fornisci(?:mi|re)?|scrivi(?:mi|re)?|fa(?:mmi|i|re)|genera(?:mi|re)?|completa(?:mi|re)?|passa(?:mi)?|invia(?:mi)?|svolgi(?:mi)?)\s+(?:subito\s+|immediatamente\s+|direttamente\s+|pure\s+|solo\s+)?(?:la\s+soluzione(?:\s+completa|\s+finale|\s+pronta|\s+corretta|\s+dell['’]esercizio)?|la\s+risposta(?:\s+corretta|\s+giusta|\s+esatta|\s+finale)?|il\s+risultato(?:\s+finale|\s+corretto)?|il\s+codice(?:\s+corretto|\s+completo|\s+funzionante|\s+giusto|\s+risolutivo|\s+finito)?|il\s+programma(?:\s+completo|\s+corretto|\s+funzionante)?|la\s+funzione(?:\s+completa|\s+corretta)?|l['’]esercizio(?:\s+svolto|\s+risolto|\s+completo)?|cosa\s+(?:devo\s+)?(?:scrivere|mettere)|la\s+riga\s+(?:giusta|corretta|da\s+scrivere))|(?:mi\s+)?(?:correggi(?:mi|lo)?|sistema(?:mi|lo)?|risolvi(?:mi|lo)?|aggiusta(?:mi|lo)?)\s+(?:tu\s+)?(?:subito\s+|direttamente\s+)?(?:il\s+codice|l['’]errore|l['’]esercizio|il\s+programma|tutto)|(?:voglio|vorrei)\s+(?:subito\s+|solo\s+)?(?:la\s+soluzione|il\s+codice\s+(?:completo|corretto|funzionante)|la\s+risposta\s+(?:giusta|corretta))|qual\s+è\s+la\s+soluzione(?:\s+corretta|\s+giusta|\s+finale)?)(?:\s+per\s+favore|\s+per\s+piacere|\s+grazie|\s+subito|\s+adesso|\s+ora)*/gi;
+
 const STUCK_PATTERN =
   /\b(non (lo )?so|non ho capito|non capisco|sono bloccat[oa]|non riesco|non so (cosa|come) fare|non saprei|aiuto|nessuna idea|mi sono pers[oa])\b/i;
 
 const EXPLICIT_STUCK_PATTERN =
   /^(sono )?ancora bloccat[oa]|\b(avanza(re)? allo stadio successivo|ancora bloccat[oa] su questo punto)\b/i;
 
+export function isDirectSolutionRequest(text: string): boolean {
+  DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX.lastIndex = 0;
+  return DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX.test(text);
+}
+
 export function isStuckExpression(text: string): boolean {
-  return STUCK_PATTERN.test(text) || EXPLICIT_STUCK_PATTERN.test(text);
+  return (
+    STUCK_PATTERN.test(text) ||
+    EXPLICIT_STUCK_PATTERN.test(text) ||
+    isDirectSolutionRequest(text)
+  );
 }
 
 export function isExplicitStuckRequest(text: string): boolean {
   return EXPLICIT_STUCK_PATTERN.test(text);
 }
 
+function buildStageEnforcementDirective(
+  stage: MaieuticStage,
+  aupLevel: AupDidacticLevel
+): string {
+  switch (stage) {
+    case 1:
+      return (
+        'VINCOLO DI STADIO 1 (Domanda esplorativa): se lo studente chiede la soluzione pronta o è bloccato, ricorda l\'invariante di non-sostituzione in massimo 1 frase e poni 1 o 2 domande esplorative mirate per fargli individuare input/output, variabili coinvolte o la riga sospetta.'
+      );
+    case 2:
+      return (
+        'VINCOLO DI STADIO 2 (Scomposizione e trace a mano): NON limitarti a domande esplorative generiche da Stadio 1. Ricorda l\'invariante di non-sostituzione in massimo 1 frase, poi spezza subito il punto critico in micro-passi numerati e avvia una simulazione/trace a mano con valori concreti di esempio (mostrando il passo iniziale e chiedendo allo studente di calcolare il passo successivo).'
+      );
+    case 3:
+      return aupLevel === 1
+        ? 'VINCOLO DI STADIO 3 (Analogia o schema astratto in Livello AUP 1): NON limitarti a domande esplorative da Stadio 1. Ricorda l\'invariante di non-sostituzione in massimo 1 frase, poi proponi OBBLIGATORIAMENTE un\'analogia concreta o un micro-schema in pseudocodice testuale su un dominio fittizio diverso dall\'esercizio dello studente, concludendo con una singola domanda di collegamento.'
+        : 'VINCOLO DI STADIO 3 (Analogia o micro-sintassi astratta): NON limitarti a una lista di domande esplorative da Stadio 1 sul codice dello studente. Ricorda l\'invariante di non-sostituzione in massimo 1 frase, poi fornisci OBBLIGATORIAMENTE un\'analogia concreta accompagnata da un micro-esempio sintattico astratto (massimo 3 righe eseguibili) su un problema fittizio diverso dall\'esercizio dello studente, concludendo con una singola domanda per applicare il concetto al suo caso.';
+    case 4:
+      return (
+        'VINCOLO DI STADIO 4 (Sintesi del blocco concettuale ed escalation al docente): NON cedere la soluzione e NON porre assolutamente nuove domande guida tecniche. Riassumi in esattamente 2 punti sintetici il nodo concettuale residuo non risolto e invita esplicitamente lo studente ad alzare la mano per richiedere il confronto con il docente in laboratorio (Human-in-the-Loop, AUP-IA §1).'
+      );
+  }
+}
+
 const BASE_MAIEUTIC_SYSTEM_PROMPT = `Sei StudIA Tutor Maieutico dei laboratori di informatica dell'I.I.S.S. "Marconi-Hack".
 Opera nel rigoroso rispetto dell'invariante di non-sostituzione (AUP-IA §1, art. 25 L. 132/2025):
 - Non fornire mai la soluzione completa o il codice risolutivo pronto all'uso.
-- Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo pre-impegno cognitivo.
-- Se lo studente formula direttamente un dubbio concettuale o algoritmico nella chat senza aver allegato codice o errori nel pannello laterale, rispondi maieuticamente sul suo modello concettuale e invitalo socraticamente, qualora utile all'indagine, a condividere il frammento di codice o l'errore del compilatore nel pannello di contesto.
+- Guida lo studente tramite domande socratiche mirate, indizi graduali e ragionamento sul suo pre-impegno cognitivo, rispettando rigorosamente lo stadio attivo della progressione maieutica.
 - Non esprimere mai voti, giudizi valutativi o profilazioni dello studente (CU-16..19 esclusi).`;
 
 export function buildMaieuticSystemPrompt(
   stage: MaieuticStage,
   udl: UdlScaffoldingConfig,
-  activityContext: ActivityContext = DEFAULT_ACTIVITY_CONTEXT
+  activityContext: ActivityContext = DEFAULT_ACTIVITY_CONTEXT,
+  hasAttachedCodeOrError = true
 ): string {
   const sections: string[] = [BASE_MAIEUTIC_SYSTEM_PROMPT];
+
+  if (!hasAttachedCodeOrError && stage < 4) {
+    sections.push(
+      'Nota sul contesto: lo studente non ha ancora allegato codice o messaggi di errore nel pannello di contesto laterale. Rispondi sul suo modello concettuale secondo lo stadio attivo e, solo se strettamente utile all\'indagine, invitalo brevemente a condividere il tentativo nel pannello di contesto.'
+    );
+  }
 
   // Ambito curricolare e traccia/vincoli dell'attività
   const preset =
@@ -241,25 +283,29 @@ export function buildMaieuticSystemPrompt(
     case 1:
       sections.push(
         'Stadio attivo: Stadio 1 (domanda esplorativa).\n' +
-          'Il tuo obiettivo è porre domande per far individuare allo studente i dati di input/output, le variabili coinvolte o la riga sospetta nel suo tentativo, stimolando la riflessione iniziale.'
+          'Il tuo obiettivo è porre domande per far individuare allo studente i dati di input/output, le variabili coinvolte o la riga sospetta nel suo tentativo, stimolando la riflessione iniziale.\n' +
+          buildStageEnforcementDirective(1, activityContext.aupLevel)
       );
       break;
     case 2:
       sections.push(
         'Stadio attivo: Stadio 2 (scomposizione e trace a mano).\n' +
-          'Il tuo obiettivo è spezzare il problema in micro-passi logici e guidare lo studente a simulare l\'esecuzione passo-passo con valori concreti (trace table o evoluzione delle variabili).'
+          'Il tuo obiettivo è spezzare il problema in micro-passi logici e guidare lo studente a simulare l\'esecuzione passo-passo con valori concreti (trace table o evoluzione delle variabili).\n' +
+          buildStageEnforcementDirective(2, activityContext.aupLevel)
       );
       break;
     case 3:
       sections.push(
         'Stadio attivo: Stadio 3 (analogia o micro-sintassi astratta).\n' +
-          'Il tuo obiettivo è proporre un\'analogia concreta esplicativa o un micro-esempio sintattico astratto di massimo 3 righe su un problema fittizio completamente diverso dall\'esercizio dello studente.'
+          'Il tuo obiettivo è proporre un\'analogia concreta esplicativa o un micro-esempio sintattico astratto di massimo 3 righe su un problema fittizio completamente diverso dall\'esercizio dello studente.\n' +
+          buildStageEnforcementDirective(3, activityContext.aupLevel)
       );
       break;
     case 4:
       sections.push(
         'Stadio attivo: Stadio 4 (sintesi del blocco concettuale ed escalation al docente in laboratorio).\n' +
-          'NON cedere assolutamente la soluzione o codice. Riassumi in 2 punti chiari e sintetici il nodo concettuale residuo non risolto e invita esplicitamente lo studente ad alzare la mano e chiamare il docente in laboratorio per un confronto umano diretto (Human-in-the-Loop, AUP-IA §1).'
+          'NON cedere assolutamente la soluzione o codice. Riassumi in 2 punti chiari e sintetici il nodo concettuale residuo non risolto e invita esplicitamente lo studente ad alzare la mano e chiamare il docente in laboratorio per un confronto umano diretto (Human-in-the-Loop, AUP-IA §1).\n' +
+          buildStageEnforcementDirective(4, activityContext.aupLevel)
       );
       break;
   }
@@ -307,7 +353,31 @@ export function isMeaningfulPreCommitment(text: string): boolean {
     return false;
   }
   const words = trimmed.split(/\s+/).filter((w) => w.length > 0);
-  return words.length >= MIN_PRE_COMMITMENT_WORDS;
+  if (words.length < MIN_PRE_COMMITMENT_WORDS) {
+    return false;
+  }
+
+  // Rimuove eventuali clausole di richiesta diretta di soluzione e punteggiatura accessoria:
+  // se ciò che resta non costituisce un'ipotesi o descrizione del blocco significativa, il pre-impegno non è valido.
+  DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX.lastIndex = 0;
+  if (DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX.test(trimmed)) {
+    DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX.lastIndex = 0;
+    const residual = trimmed
+      .replace(DIRECT_SOLUTION_REQUEST_CLAUSE_REGEX, ' ')
+      .replace(/^[\s,.;:!?¡¿-]+|[\s,.;:!?¡¿-]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (residual.length < MIN_PRE_COMMITMENT_CHARS) {
+      return false;
+    }
+    const residualWords = residual.split(/\s+/).filter((w) => w.length > 0);
+    if (residualWords.length < MIN_PRE_COMMITMENT_WORDS) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function emptyDraft(): StudentDraft {
@@ -613,11 +683,28 @@ export class MaieuticSessionEngine {
       ? followUpTrimmed
       : this.buildDraftPrompt();
 
+    const hasAttachedCodeOrError =
+      this.draft.studentCode.trim().length > 0 || this.draft.compilerError.trim().length > 0;
+
     const systemPrompt = buildMaieuticSystemPrompt(
       this.currentStage,
       this.udlConfig,
-      this.activityContext
+      this.activityContext,
+      hasAttachedCodeOrError
     );
+
+    const shouldInjectTurnStageReminder =
+      this.currentStage > 1 ||
+      (isFollowUpReply &&
+        (isDirectSolutionRequest(followUpTrimmed) || isStuckExpression(followUpTrimmed))) ||
+      (!isFollowUpReply && isDirectSolutionRequest(this.draft.cognitivePreCommitment));
+
+    const modelUserMessageContent = shouldInjectTurnStageReminder
+      ? `${studentMessageContent}\n\n[Direttiva pedagogica per il tutor maieutico — ${buildStageEnforcementDirective(
+          this.currentStage,
+          this.activityContext.aupLevel
+        )}]`
+      : studentMessageContent;
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -625,7 +712,7 @@ export class MaieuticSessionEngine {
         role: t.role === 'student' ? 'user' : 'assistant',
         content: t.content,
       })),
-      { role: 'user', content: studentMessageContent },
+      { role: 'user', content: modelUserMessageContent },
     ];
 
     const studentTurn: DialogueTurn = {
