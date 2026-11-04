@@ -873,10 +873,10 @@ describe('WorkspaceUI', () => {
     const statusBadge = root.querySelector<HTMLElement>('[data-testid="connection-status-badge"]')!;
     expect(statusBadge.textContent?.trim()).toBe('Connesso • Modalità Standalone Loopback');
 
-    // Verifica stato iniziale delle statistiche
+    // Verifica stato iniziale delle statistiche (formattazione compatta in k per la capienza massima)
     const statContextEl = root.querySelector<HTMLElement>('[data-testid="stat-context-window"]')!;
     const statSpeedEl = root.querySelector<HTMLElement>('[data-testid="stat-tokens-per-sec"]')!;
-    expect(statContextEl.textContent).toMatch(/0\s*\/\s*32[.,]?768\s*token/);
+    expect(statContextEl.textContent).toMatch(/0\s*\/\s*33k\s*token/);
     expect(statSpeedEl.textContent).toBe('—');
 
     // Esecuzione di un intervento maieutico e verifica aggiornamento statistiche
@@ -887,14 +887,14 @@ describe('WorkspaceUI', () => {
     attemptForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await new Promise((r) => setTimeout(r, 20));
 
-    expect(statContextEl.textContent).toMatch(/1[.,]?240\s*\/\s*32[.,]?768\s*token/);
+    expect(statContextEl.textContent).toMatch(/1[.,]?240\s*\/\s*33k\s*token/);
     expect(statSpeedEl.textContent).toBe('42,5 tok/s');
 
     // Cambio modello nel selettore: aggiorna il denominatore della finestra di contesto
     const modelSelect = root.querySelector<HTMLSelectElement>('#model-select')!;
     modelSelect.value = 'llama-3.1-8b-instruct';
     modelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(statContextEl.textContent).toMatch(/1[.,]?240\s*\/\s*8[.,]?192\s*token/);
+    expect(statContextEl.textContent).toMatch(/1[.,]?240\s*\/\s*8k\s*token/);
 
     // Motore offline: il selettore resta visibile ma disabilitato con "Nessun modello rilevato"
     inference.shouldFailConnection = true;
@@ -1405,13 +1405,22 @@ describe('WorkspaceUI', () => {
       textLogicalSchemas: true,
     });
 
-    // Controlli accessibilità visiva UI
+    // Controlli accessibilità visiva UI e uniformità stilistica controlli UDL
     const fontScaleSelect = udlPanel.querySelector<HTMLSelectElement>('[data-testid="udl-font-scale"]')!;
     const fontCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-readability-font"]')!;
     const spacingCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-expanded-spacing"]')!;
     const contrastCb = udlPanel.querySelector<HTMLInputElement>('[data-testid="udl-high-contrast"]')!;
 
     expect(fontScaleSelect).not.toBeNull();
+    expect(fontScaleSelect.classList.contains('tm-input')).toBe(true);
+    expect(fontScaleSelect.classList.contains('tm-select')).toBe(true);
+    expect(levelSelect.classList.contains('tm-input')).toBe(true);
+    expect(levelSelect.classList.contains('tm-select')).toBe(true);
+
+    const levelLabel = udlPanel.querySelector<HTMLLabelElement>('label[for="udl-level-select"]')!;
+    const fontScaleLabel = udlPanel.querySelector<HTMLLabelElement>('label[for="udl-font-scale"]')!;
+    expect(levelLabel.classList.contains('tm-label')).toBe(true);
+    expect(fontScaleLabel.classList.contains('tm-label')).toBe(true);
     expect(fontCb).not.toBeNull();
     expect(spacingCb).not.toBeNull();
     expect(contrastCb).not.toBeNull();

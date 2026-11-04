@@ -73,10 +73,17 @@ function formatConnectionBadgeText(snapshot: MaieuticSessionSnapshot): string {
   return `Verifica in corso • ${modeLabel}`;
 }
 
+function formatTokensCompact(tokens: number): string {
+  if (tokens >= 1000) {
+    return `${Math.round(tokens / 1000)}k`;
+  }
+  return IT_INTEGER_FORMATTER.format(tokens);
+}
+
 function formatContextWindowText(stats: InferenceStatsSnapshot): string {
   const usedFormatted = IT_INTEGER_FORMATTER.format(stats.contextUsedTokens);
   if (stats.contextMaxTokens !== null && stats.contextMaxTokens > 0) {
-    const maxFormatted = IT_INTEGER_FORMATTER.format(stats.contextMaxTokens);
+    const maxFormatted = formatTokensCompact(stats.contextMaxTokens);
     return `${usedFormatted} / ${maxFormatted} token`;
   }
   return `${usedFormatted} token`;
@@ -225,7 +232,7 @@ export async function mountWorkspaceUI(
             </p>
             <div class="tm-form-group">
               <label for="udl-level-select" class="tm-label">Complessità linguistica</label>
-              <select id="udl-level-select" class="tm-input" data-testid="udl-level-select">
+              <select id="udl-level-select" class="tm-input tm-select" data-testid="udl-level-select">
                 <option value="triennio">Profilo triennio (classi III–V: lessico tecnico formale)</option>
                 <option value="biennio">Profilo biennio (classi I–II: lessico essenziale e concreto)</option>
               </select>
@@ -251,8 +258,8 @@ export async function mountWorkspaceUI(
             <div class="tm-udl-accessibility-section">
               <span class="tm-udl-section-subtitle">Accessibilità visiva interfaccia</span>
               <div class="tm-form-group">
-                <label for="udl-font-scale" class="tm-field-label">Dimensione carattere</label>
-                <select id="udl-font-scale" class="tm-select" data-testid="udl-font-scale">
+                <label for="udl-font-scale" class="tm-label">Dimensione carattere</label>
+                <select id="udl-font-scale" class="tm-input tm-select" data-testid="udl-font-scale">
                   <option value="default" selected>Normale (100%)</option>
                   <option value="large">Grande (115%)</option>
                   <option value="xlarge">Molto grande (130%)</option>
