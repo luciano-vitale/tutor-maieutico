@@ -138,6 +138,8 @@ Per le istruzioni dettagliate di installazione nei laboratori scolastici, config
 
 ---
 
-## 6. Licenza
+## 6. Autore e licenza
 
-Questo progetto è rilasciato sotto licenza open source **MIT License** — `Copyright (c) 2026 I.I.S.S. "Marconi-Hack" - Bari`. Consultare il file [LICENSE](./LICENSE) per il testo integrale.
+- **Ideazione e sviluppo**: Luciano Vitale
+- **Contesto istituzionale**: I.I.S.S. "Marconi-Hack" - Bari
+- **Licenza**: open source con licenza **MIT License** — `Copyright (c) 2026 Luciano Vitale - I.I.S.S. "Marconi-Hack" - Bari`. Consultare il file [LICENSE](./LICENSE) per il testo integrale.

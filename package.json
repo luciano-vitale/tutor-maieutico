@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Tutor Maieutico Didattico (Zero-Data, 100% Offline Loopback & LAN Endpoint) per i laboratori dell'I.I.S.S. Marconi-Hack",
+  "author": "Luciano Vitale",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
